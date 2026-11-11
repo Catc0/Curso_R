@@ -1,0 +1,126 @@
+---
+title: "Curso de R: de la instalación al dashboard dinámico"
+subtitle: "Manual del curso"
+date: "Generado el `r format(Sys.Date(), '%d/%m/%Y')`"
+lang: es
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    theme: flatly
+    highlight: tango
+    code_folding: show
+    css: estilos.css
+    includes:
+      after_body: recursos/buscar.html
+---
+
+```{r setup, include = FALSE}
+# Este archivo está en manual/; la raíz del proyecto está un nivel arriba.
+# root.dir hace que todos los chunks usen rutas como "datos/datos.xlsx".
+raiz <- normalizePath("..")
+knitr::opts_knit$set(root.dir = raiz)
+knitr::opts_chunk$set(fig.align = "center", fig.width = 7, fig.height = 4.5, comment = "##")
+modulo <- function(archivo) file.path(raiz, "manual", "modulos", archivo)
+```
+
+# Inicio {#inicio}
+
+Este manual acompaña el proyecto `proyecto_r`. Avanza en orden: cada módulo usa lo aprendido en los anteriores. Todos los ejemplos usan los datos reales de `datos/datos.xlsx` y se ejecutaron al generar este documento, así que los resultados que ves son los de esos datos.
+
+| Módulo | Tema | Archivos relacionados |
+|---|---|---|
+| [0](#modulo-0) | Instalación y configuración | `instalar_entorno.ps1`, `requirements.R` |
+| [1](#modulo-1) | Fundamentos de R | `ejemplos/01_fundamentos.R`, `ejemplos/03_funciones_y_control.R`, `demos/01_fundamentos.Rmd` |
+| [2](#modulo-2) | Estructuras de datos | `ejemplos/02_estructuras_datos.R`, `ejemplos/04_importacion_excel.R`, `demos/02_estructuras_datos.Rmd` |
+| [3](#modulo-3) | RStudio y productividad | `demos/03_rstudio_productividad.Rmd` |
+| [4](#modulo-4) | Markdown y R Markdown | `demos/04_markdown_html_css.Rmd`, `demos/informe_parametrizado.Rmd` |
+| [5](#modulo-5) | HTML, CSS y contenido dinámico | `demos/04_markdown_html_css.Rmd` |
+| [6](#modulo-6) | Análisis y visualización | `ejemplos/05_visualizacion.R`, `demos/05_analisis_datos.Rmd` |
+| [7](#modulo-7) | Dashboard dinámico | `dashboard/app.R`, `dashboard/graficas.R`, `dashboard/estilos.css` |
+
+**Cómo usar este manual**
+
+- El menú de la izquierda lleva a cada sección; escribe en el buscador para filtrarlo. Para buscar texto en toda la página usa `Ctrl + F`.
+- Los botones **Code / Hide** ocultan o muestran el código.
+- Las soluciones de los ejercicios están en bloques plegados **Ver solución**. Intenta resolverlos antes de abrirlas.
+- Los bloques marcados como `powershell` se escriben en PowerShell; el resto, en RStudio.
+- Este manual es **estático**: su navegación funciona sin R. El dashboard del módulo 7 es **interactivo** y necesita R en ejecución.
+
+```{r, child = modulo("00_instalacion.Rmd")}
+```
+
+<div class="nav-modulos">[← Inicio](#inicio) · [Módulo 1 →](#modulo-1)</div>
+
+```{r, child = modulo("01_fundamentos.Rmd")}
+```
+
+<div class="nav-modulos">[← Módulo 0](#modulo-0) · [Módulo 2 →](#modulo-2)</div>
+
+```{r, child = modulo("02_estructuras_datos.Rmd")}
+```
+
+<div class="nav-modulos">[← Módulo 1](#modulo-1) · [Módulo 3 →](#modulo-3)</div>
+
+```{r, child = modulo("03_rstudio.Rmd")}
+```
+
+<div class="nav-modulos">[← Módulo 2](#modulo-2) · [Módulo 4 →](#modulo-4)</div>
+
+```{r, child = modulo("04_rmarkdown.Rmd")}
+```
+
+<div class="nav-modulos">[← Módulo 3](#modulo-3) · [Módulo 5 →](#modulo-5)</div>
+
+```{r, child = modulo("05_html_css.Rmd")}
+```
+
+<div class="nav-modulos">[← Módulo 4](#modulo-4) · [Módulo 6 →](#modulo-6)</div>
+
+```{r, child = modulo("06_analisis.Rmd")}
+```
+
+<div class="nav-modulos">[← Módulo 5](#modulo-5) · [Módulo 7 →](#modulo-7)</div>
+
+```{r, child = modulo("07_dashboard.Rmd")}
+```
+
+<div class="nav-modulos">[← Módulo 6](#modulo-6) · [Inicio ↑](#inicio)</div>
+
+# Referencia rápida {#referencia}
+
+## Funciones usadas en el curso
+
+| Función | Paquete | Para qué |
+|---|---|---|
+| `c()`, `seq()`, `length()` | base | Crear y medir vectores |
+| `data.frame()`, `str()`, `head()`, `summary()` | base | Crear y explorar tablas |
+| `subset()`, `order()`, `aggregate()`, `table()` | base | Filtrar, ordenar y resumir |
+| `is.na()`, `complete.cases()`, `na.rm = TRUE` | base | Valores faltantes |
+| `as.numeric()`, `as.Date()`, `format()` | base | Convertir tipos y fechas |
+| `trimws()`, `substr()`, `grepl()`, `sub()`, `paste0()` | base | Texto |
+| `tryCatch()`, `stop()`, `warning()` | base | Errores |
+| `excel_sheets()`, `read_excel()` | readxl | Leer Excel |
+| `ggplot()`, `aes()`, `geom_col()`, `geom_histogram()`, `ggsave()` | ggplot2 | Gráficas |
+| `render()` | rmarkdown | Generar documentos |
+| `kable()`, `include_graphics()` | knitr | Tablas e imágenes en documentos |
+| `runApp()`, `reactive()`, `render*()`, `validate()` | shiny | Dashboard |
+| `page_fluid()`, `card()`, `bs_theme()` | bslib | Diseño del dashboard |
+
+## Solución de problemas: ¿por dónde empiezo?
+
+1. Lee el mensaje completo: **qué función** falló y **por qué**.
+2. Revisa la carpeta de trabajo: `getwd()` debe terminar en `proyecto_r`.
+3. Comprueba los paquetes: `source("requirements.R")`.
+4. Valida los datos: `source("scripts/validar_datos.R")` o `Rscript scripts/validar_datos.R`.
+5. Reinicia R (`Ctrl + Shift + F10`) y ejecuta el script desde el principio.
+6. Consulta las tablas de "Errores frecuentes" de cada módulo.
+
+## Información de la sesión
+
+```{r sesion}
+sessionInfo()
+```

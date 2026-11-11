@@ -1,0 +1,278 @@
+# Módulo 2. Estructuras de datos {#modulo-2}
+
+**Objetivo:** guardar y manipular información con listas, matrices y data frames, e importar, limpiar y validar los datos reales de `datos/datos.xlsx`.
+
+## Listas
+
+Una **lista** guarda elementos de **tipos distintos**, incluso otras listas o vectores.
+
+**Sintaxis:** `list(nombre1 = valor1, nombre2 = valor2)`. Para acceder a un elemento usa `lista$nombre` o `lista[["nombre"]]`.
+
+```{r m2-listas}
+programa <- list(
+  clave = "51U001",
+  anio = 2025,
+  avances = c(programa = 1, apoyos = 1),
+  responsables = c("tania.moreno", "miguel.morales")
+)
+programa$clave
+programa[["avances"]]["apoyos"]
+
+# Crear, modificar y eliminar elementos
+programa$estatus <- 2          # crear
+programa$anio <- 2024          # modificar
+programa$responsables <- NULL  # eliminar
+names(programa)
+str(programa)
+```
+
+**Resultado:** `str()` muestra la estructura de la lista: cada elemento con su tipo. Asignar `NULL` elimina un elemento.
+
+**Ejercicio:** crea una lista `kpi` con `total = 250` y `completos = 170`. Después agrega `porcentaje`, calculado a partir de los otros dos.
+
+<details><summary>Ver solución</summary>
+
+```{r m2-sol-listas}
+kpi <- list(total = 250, completos = 170)
+kpi$porcentaje <- kpi$completos / kpi$total
+kpi
+```
+
+</details>
+
+**Error común:** `programa["clave"]` devuelve una **lista** de un elemento; `programa[["clave"]]` devuelve el **valor**. Para trabajar con el valor usa `[[ ]]` o `$`.
+
+## Matrices
+
+Una **matriz** es una tabla de filas y columnas del **mismo tipo**.
+
+**Sintaxis:** `matrix(datos, nrow = filas, ncol = columnas)`. Se accede con `m[fila, columna]`.
+
+```{r m2-matrices}
+avances <- matrix(
+  c(0.950, 0.948, 0.921, 0.952),
+  nrow = 2,
+  dimnames = list(c("Programa", "Apoyos"), c("2024", "2025"))
+)
+avances
+avances["Apoyos", "2025"]
+avances[, "2024"]       # toda la columna 2024
+avances * 100           # operación sobre toda la matriz
+colMeans(avances)       # promedio de cada columna
+```
+
+**Ejercicio:** agrega a la matriz una fila `"Global"` con los valores 0.972 y 0.973, usando `rbind()`.
+
+<details><summary>Ver solución</summary>
+
+```{r m2-sol-matrices}
+avances <- rbind(avances, Global = c(0.972, 0.973))
+avances
+```
+
+</details>
+
+**Error común:** `subscript out of bounds` aparece cuando pides una fila o columna que no existe, por ejemplo `avances[5, 1]`.
+
+## Data frames
+
+Un **data frame** es la estructura más usada para analizar datos: una tabla en la que **cada columna** es un vector, y las columnas pueden ser de tipos distintos. Es como una hoja de Excel.
+
+```{r m2-dataframe}
+muestra <- data.frame(
+  clave = c("54U001", "47S313", "51U001"),
+  anio = c(2025, 2024, 2025),
+  avance_global = c(1, 0.91665, NA)
+)
+muestra
+nrow(muestra); ncol(muestra)
+str(muestra)
+```
+
+### Crear, consultar, modificar y eliminar
+
+```{r m2-df-crud}
+muestra$tipo <- substr(muestra$clave, 3, 3)    # crear columna
+muestra$anio[2] <- 2025                       # modificar un valor
+muestra <- rbind(muestra, data.frame(clave = "38E004", anio = 2025,
+                                     avance_global = 1, tipo = "E"))  # agregar fila
+muestra$tipo <- NULL                          # eliminar columna
+muestra <- muestra[-1, ]                      # eliminar la primera fila
+muestra
+```
+
+### Seleccionar filas y columnas
+
+**Sintaxis:** `df[filas, columnas]`. Si dejas una parte vacía, se toman todas.
+
+```{r m2-df-seleccion}
+muestra[1, ]                         # primera fila
+muestra[, "avance_global"]           # una columna como vector
+muestra[, c("clave", "anio")]        # varias columnas
+muestra$clave                        # una columna con $
+```
+
+### Filtrar, ordenar y transformar
+
+```{r m2-df-filtrar}
+muestra[muestra$anio == 2025, ]                     # filtrar
+muestra[!is.na(muestra$avance_global) & muestra$avance_global >= 1, ]
+muestra[order(muestra$avance_global, decreasing = TRUE), ]  # ordenar
+muestra$avance_pct <- muestra$avance_global * 100   # transformar
+subset(muestra, anio == 2025, select = c(clave, avance_pct))
+```
+
+**Ejercicio:** con `muestra`, muestra solo las claves con avance menor que 1, ordenadas de menor a mayor avance.
+
+<details><summary>Ver solución</summary>
+
+```{r m2-sol-df}
+pendientes <- muestra[!is.na(muestra$avance_global) & muestra$avance_global < 1, ]
+pendientes[order(pendientes$avance_global), "clave"]
+```
+
+</details>
+
+**Errores comunes**
+
+```{r m2-err-df, error = TRUE}
+muestra[muestra$anio == 2025]   # falta la coma: no da error, ¡pero selecciona COLUMNAS en vez de filas!
+muestra$Clave                   # columna inexistente: devuelve NULL sin avisar
+```
+
+## Importar archivos Excel
+
+El paquete `readxl` lee archivos `.xlsx` sin necesidad de tener Excel instalado.
+
+```{r m2-importar}
+library(readxl)
+ruta <- file.path("datos", "datos.xlsx")
+excel_sheets(ruta)                  # hojas del archivo
+
+crudo <- read_excel(ruta, sheet = "Exportar Hoja de Trabajo")
+dim(crudo)                          # filas y columnas
+names(crudo)
+```
+
+```{r m2-importar-tipos}
+# ¿Qué tipo asignó readxl a cada columna?
+sapply(crudo, class)[c("ANIO", "ESTATUS", "AVANCE_PROGRAMA", "TOTAL_APOYOS")]
+head(crudo$AVANCE_APOYOS, 10)
+```
+
+**Resultado:** `ANIO` y `ESTATUS` llegan como números, pero los avances llegan como **texto** (`"character"`) porque en el Excel están guardados como celdas de texto, por ejemplo `".8333"`. Las celdas que solo tenían un espacio llegan como `NA`, porque `read_excel()` recorta los espacios (`trim_ws = TRUE`) y trata el texto vacío como faltante. Hay que convertir los avances a número antes de calcular.
+
+**Ejercicio:** lee la hoja `SQL` y muestra las primeras 300 letras de la consulta con `substr()`.
+
+<details><summary>Ver solución</summary>
+
+```{r m2-sol-importar}
+sql <- read_excel(ruta, sheet = "SQL", col_names = FALSE)
+consulta <- na.omit(unlist(sql))[1]
+cat(substr(consulta, 1, 300))
+```
+
+</details>
+
+**Errores comunes:** `path does not exist` (ruta mal escrita o carpeta de trabajo incorrecta; revisa `getwd()`) y `Sheet 'X' not found` (nombre de hoja con otra ortografía; cópialo de `excel_sheets()`).
+
+## Limpieza y validación de datos
+
+Limpiar es corregir el formato; validar es comprobar que los datos tienen sentido.
+
+```{r m2-limpieza}
+datos <- as.data.frame(crudo)
+
+# 1. Texto con espacios -> NA -> número
+datos$AVANCE_APOYOS <- trimws(datos$AVANCE_APOYOS)
+datos$AVANCE_APOYOS[datos$AVANCE_APOYOS == ""] <- NA
+datos$AVANCE_APOYOS <- as.numeric(datos$AVANCE_APOYOS)
+summary(datos$AVANCE_APOYOS)
+
+# 2. Validar: ¿todos los avances están entre 0 y 1?
+all(datos$AVANCE_APOYOS >= 0 & datos$AVANCE_APOYOS <= 1, na.rm = TRUE)
+
+# 3. Validar: ¿TIPO coincide con el tercer carácter de CLAVE?
+all(datos$TIPO == substr(datos$CLAVE, 3, 3))
+
+# 4. Validar: ¿hay claves duplicadas en el mismo año?
+sum(duplicated(paste(datos$CLAVE, datos$ANIO)))
+```
+
+Hacer estos pasos para cada columna es repetitivo, así que el proyecto los agrupa en **funciones** dentro de `scripts/validar_datos.R`:
+
+```{r m2-cargar-datos}
+source(file.path("scripts", "validar_datos.R"), encoding = "UTF-8")
+programas <- cargar_datos(file.path("datos", "datos.xlsx"))
+knitr::kable(validar_datos(programas))
+```
+
+**Resultado:** la tabla resume cada revisión. Desde aquí, todos los módulos trabajan con `programas`, que ya tiene los tipos correctos.
+
+**Ejercicio:** cuenta cuántos programas no tienen `TITULAR_RP` y qué porcentaje del total representan.
+
+<details><summary>Ver solución</summary>
+
+```{r m2-sol-limpieza}
+sin_titular <- sum(is.na(programas$TITULAR_RP))
+sin_titular
+round(sin_titular / nrow(programas) * 100, 1)
+```
+
+</details>
+
+**Error común:** `NAs introduced by coercion` al usar `as.numeric()` indica que había textos que no son números. Revisa cuáles son con `x[is.na(as.numeric(x)) & !is.na(x)]`.
+
+## Manejo de fechas, texto y valores faltantes
+
+### Fechas
+
+La columna `ULTIMA_MODIFICACION` viene como texto `"09/11/26"` (día/mes/año con dos dígitos).
+
+```{r m2-fechas}
+fecha <- as.Date("09/11/26", format = "%d/%m/%y")
+fecha
+format(fecha, "%d de %B de %Y")
+range(programas$ULTIMA_MODIFICACION)
+as.numeric(max(programas$ULTIMA_MODIFICACION) - min(programas$ULTIMA_MODIFICACION))  # días
+table(format(programas$ULTIMA_MODIFICACION, "%Y-%m"))
+```
+
+| Código | Significado |
+|---|---|
+| `%d` | día (01–31) |
+| `%m` | mes (01–12) |
+| `%y` / `%Y` | año con 2 / 4 dígitos |
+| `%B` | nombre del mes |
+
+### Texto
+
+```{r m2-texto}
+dep <- "Instituto de Seguridad y Servicios Sociales de los Trabajadores del Estado (ISSSTE)"
+nchar(dep)
+toupper("secretaría de salud")
+substr("51U001", 3, 3)
+grepl("Secretar", programas$DEPENDENCIA)[1:5]   # ¿contiene el texto?
+sub(".*\\((.*)\\)$", "\\1", dep)               # extraer la sigla
+paste("Programas de", 2025)
+```
+
+### Valores faltantes en un data frame
+
+```{r m2-na}
+colSums(is.na(programas[, c("TITULAR_RP", "INFORMANTE", "AVANCE_APOYOS", "AVANCE_GLOBAL")]))
+completos <- programas[complete.cases(programas[, c("AVANCE_PROGRAMA", "AVANCE_APOYOS")]), ]
+nrow(completos)
+```
+
+**Ejercicio:** ¿cuántos programas se modificaron en noviembre de 2026?
+
+<details><summary>Ver solución</summary>
+
+```{r m2-sol-fechas}
+sum(format(programas$ULTIMA_MODIFICACION, "%Y-%m") == "2026-11")
+```
+
+</details>
+
+**Errores comunes:** usar `%Y` con años de dos dígitos (produce el año 0026) y confundir el orden día/mes: `"09/11/26"` es 9 de noviembre, no 11 de septiembre.

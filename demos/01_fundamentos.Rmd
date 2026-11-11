@@ -1,0 +1,25 @@
+---
+title: "Fundamentos de R"
+subtitle: "Demo del curso de R"
+lang: es
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: show
+    css: ../manual/estilos.css
+---
+
+```{r setup, include = FALSE}
+# Este archivo está en demos/; la raíz del proyecto está un nivel arriba.
+raiz <- normalizePath("..")
+knitr::opts_knit$set(root.dir = raiz)
+knitr::opts_chunk$set(fig.align = "center", fig.width = 7, fig.height = 4.5, comment = "##")
+modulo <- function(archivo) file.path(raiz, "manual", "modulos", archivo)
+```
+
+El contenido de esta demo es el mismo que el del manual (`manual/modulos/`). Se mantiene en un solo lugar para que el manual y las demos no se contradigan.
+
+```{r, child = modulo("01_fundamentos.Rmd")}
+```

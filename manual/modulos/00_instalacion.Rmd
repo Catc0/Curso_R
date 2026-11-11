@@ -1,0 +1,184 @@
+# Módulo 0. Instalación y configuración {#modulo-0}
+
+En este módulo vas a preparar tu computadora con Windows para trabajar con R. Al terminar tendrás R, RStudio y los paquetes del curso instalados, y sabrás comprobar que todo funciona.
+
+## ¿Qué vamos a instalar?
+
+| Programa | Para qué sirve |
+|---|---|
+| **R** | El lenguaje. Es el "motor" que ejecuta el código. |
+| **RStudio Desktop** | El editor. Facilita escribir, ejecutar y organizar el código. Necesita que R esté instalado. |
+| **Pandoc** | Convierte documentos R Markdown en HTML. RStudio ya lo incluye; solo hace falta instalarlo aparte para generar HTML desde PowerShell. |
+| **Paquetes de R** | Extensiones: `readxl`, `ggplot2`, `rmarkdown`, `knitr`, `shiny` y `bslib`. |
+
+## PowerShell, consola de R y editor: ¿dónde escribo cada cosa?
+
+Es el error más común al empezar: escribir un comando en el lugar equivocado.
+
+| Lugar | Cómo lo reconoces | Qué escribes ahí | Ejemplo |
+|---|---|---|---|
+| **PowerShell** | Ventana con `PS C:\...>` | Comandos de Windows | `winget install --id RProject.R -e` |
+| **Consola de R** | Panel de RStudio con el símbolo `>` | Código R que se ejecuta al presionar Enter | `2 + 3` |
+| **Editor de scripts** | Panel superior de RStudio con archivos `.R` o `.Rmd` | Código R que se guarda y se ejecuta con `Ctrl + Enter` | `x <- 10` |
+
+En este manual, los bloques marcados como **powershell** van en PowerShell y los bloques **r** van en RStudio.
+
+## Instalación automática (recomendada)
+
+El proyecto incluye el script `instalar_entorno.ps1`, que instala todo con **winget**, el instalador de paquetes de Windows.
+
+1. Abre **PowerShell**: menú Inicio → escribe *PowerShell* → Enter.
+2. Ve a la carpeta del proyecto (cambia la ruta por la tuya):
+
+```powershell
+cd "C:\Users\TU_USUARIO\Documents\proyecto_r"
+```
+
+3. Ejecuta el script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\instalar_entorno.ps1
+```
+
+`-ExecutionPolicy Bypass` permite ejecutar este script una sola vez sin cambiar la configuración de seguridad de Windows.
+
+## Instalación manual paso a paso
+
+Si prefieres hacerlo tú mismo, o si el script falla:
+
+```powershell
+# 1. Comprobar que winget existe
+winget --version
+
+# 2. Instalar R
+winget install --id RProject.R -e
+
+# 3. Instalar RStudio Desktop
+winget install --id Posit.RStudio -e
+
+# 4. (Opcional) Instalar Pandoc para generar HTML desde PowerShell
+winget install --id JohnMacFarlane.Pandoc -e
+```
+
+`-e` (o `--exact`) indica que el identificador debe coincidir exactamente.
+
+**Sin winget:** descarga R desde <https://cran.r-project.org/bin/windows/base/> y RStudio desde <https://posit.co/download/rstudio-desktop/>. Instala primero R y después RStudio.
+
+## Verificar la instalación
+
+Nunca supongas que una instalación funcionó: compruébalo.
+
+**En PowerShell.** El instalador de R no agrega R al `PATH`, así que se usa la ruta completa:
+
+```powershell
+# Ver qué versiones de R hay instaladas
+Get-ChildItem "C:\Program Files\R"
+
+# Ejecutar Rscript con su ruta completa (ajusta la versión)
+& "C:\Program Files\R\R-4.6.2\bin\Rscript.exe" --version
+```
+
+Para escribir solo `Rscript` en cualquier ventana, agrega la carpeta `bin` al PATH de tu usuario:
+
+```powershell
+$rBin = (Get-ChildItem "C:\Program Files\R\R-*\bin" | Sort-Object FullName -Descending | Select-Object -First 1).FullName
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";" + $rBin, "User")
+# Cierra y vuelve a abrir PowerShell, y prueba:
+Rscript --version
+```
+
+**En la consola de R** (dentro de RStudio):
+
+```{r version-r, eval = FALSE}
+R.version.string        # versión de R
+RStudio.Version()$version  # versión de RStudio (solo funciona dentro de RStudio)
+rmarkdown::pandoc_version() # versión de Pandoc que usará R Markdown
+```
+
+## Configuración inicial de RStudio
+
+Abre RStudio y ve a **Tools → Global Options**:
+
+1. **General → Basic:** desmarca *Restore .RData into workspace at startup* y en *Save workspace to .RData on exit* elige **Never**. Así cada sesión empieza limpia y el código es reproducible.
+2. **Code → Saving:** en *Default text encoding* elige **UTF-8** para que los acentos se vean bien.
+3. **Appearance:** elige tema y tamaño de letra.
+4. **R Markdown:** en *Evaluate chunks in directory* elige **Project** para que los `.Rmd` usen la carpeta del proyecto.
+
+## Instalar los paquetes del proyecto
+
+Abre `proyecto_r.Rproj` (doble clic) y en la consola de R ejecuta:
+
+```{r instalar-paquetes, eval = FALSE}
+source("requirements.R")
+```
+
+O desde PowerShell, dentro de la carpeta del proyecto:
+
+```powershell
+Rscript requirements.R
+```
+
+El script instala solo los paquetes que falten, muestra sus versiones y las guarda en `salidas/versiones.csv`. Necesita Internet la primera vez.
+
+## Organización del proyecto
+
+```
+proyecto_r/
+  proyecto_r.Rproj      <- ábrelo para trabajar (fija la carpeta de trabajo)
+  requirements.R        <- instala los paquetes
+  instalar_entorno.ps1  <- instala R, RStudio y Pandoc
+  datos/datos.xlsx      <- datos del curso (no se modifican)
+  manual/               <- este manual (index.Rmd -> index.html)
+  ejemplos/             <- scripts .R por tema
+  demos/                <- documentos .Rmd por módulo
+  dashboard/            <- dashboard interactivo (app.R)
+  scripts/              <- validar datos, generar documentación y dashboard
+  salidas/              <- archivos generados (HTML, CSV)
+```
+
+Abrir el archivo `.Rproj` hace que la **carpeta de trabajo** sea `proyecto_r/`. Por eso todas las rutas del curso son **relativas**, como `datos/datos.xlsx`, y funcionan en cualquier computadora.
+
+## Ejecutar scripts y documentos
+
+| Qué quieres hacer | En RStudio | En PowerShell (carpeta proyecto_r) |
+|---|---|---|
+| Ejecutar un script `.R` | Abrir el archivo → `Ctrl + Shift + S` (Source) | `Rscript ejemplos/01_fundamentos.R` |
+| Generar el HTML de un `.Rmd` | Abrir el archivo → botón **Knit** (`Ctrl + Shift + K`) | `Rscript -e "rmarkdown::render('demos/01_fundamentos.Rmd')"` |
+| Generar todo el manual y las demos | `source("scripts/generar_documentacion.R")` | `Rscript scripts/generar_documentacion.R` |
+| Validar los datos | `source("scripts/validar_datos.R")` | `Rscript scripts/validar_datos.R` |
+| Iniciar el dashboard | `shiny::runApp("dashboard")` | `Rscript scripts/generar_dashboard.R` |
+
+## Ejercicio
+
+1. Verifica la versión de R desde PowerShell y desde la consola de R.
+2. Ejecuta `Rscript scripts/validar_datos.R` y revisa el archivo `salidas/validacion_datos.csv`.
+
+<details><summary>Ver solución</summary>
+
+```powershell
+Rscript --version
+Rscript scripts/validar_datos.R
+```
+
+```{r sol-modulo0, eval = FALSE}
+R.version.string
+read.csv("salidas/validacion_datos.csv")
+```
+
+Si todo está bien, la columna `resultado` muestra `OK` en todas las revisiones.
+
+</details>
+
+## Errores frecuentes de instalación
+
+| Mensaje o síntoma | Causa | Solución |
+|---|---|---|
+| `Rscript : El término 'Rscript' no se reconoce...` | R no está en el PATH | Usa la ruta completa o agrega la carpeta `bin` al PATH (ver arriba). Cierra y abre PowerShell. |
+| `winget : El término 'winget' no se reconoce...` | Falta App Installer | Instálalo desde Microsoft Store o usa los instaladores web. |
+| `...no se puede cargar porque la ejecución de scripts está deshabilitada` | Política de ejecución de PowerShell | Ejecuta con `powershell -ExecutionPolicy Bypass -File .\instalar_entorno.ps1` |
+| `Warning: 'lib = "C:/Program Files/R/..."' is not writable` | Sin permisos en la carpeta de R | Responde **Yes** cuando R pregunte si usar una librería personal. |
+| `there is no package called 'readxl'` | El paquete no está instalado | `source("requirements.R")` |
+| `pandoc version 1.12.3 or higher is required` | R no encuentra Pandoc | Usa **Knit** en RStudio o instala Pandoc con winget. |
+| `cannot open file 'datos/datos.xlsx': No such file or directory` | Carpeta de trabajo incorrecta | Abre `proyecto_r.Rproj` o revisa `getwd()`. |
+| Acentos con símbolos raros (`Ã³`) | Archivo guardado sin UTF-8 | *File → Reopen with Encoding → UTF-8* y guarda con *Save with Encoding → UTF-8*. |
+| Error al instalar paquetes detrás de un proxy | Red corporativa | Pide la configuración de proxy a tu área de sistemas. |

@@ -1,0 +1,176 @@
+# Módulo 7. Dashboard dinámico {#modulo-7}
+
+**Objetivo:** construir un dashboard interactivo que reproduzca el diseño de referencia con los datos reales y que recalcule indicadores, gráficas y tablas cuando cambian los filtros.
+
+```{r m7-referencia, echo = FALSE, out.width = "100%", fig.cap = "Diseño de referencia (dashboard.png). Sus cifras provienen de otra extracción; el dashboard calcula las suyas a partir de datos.xlsx."}
+knitr::include_graphics(normalizePath(file.path("manual", "recursos", "dashboard.png")), rel_path = FALSE)
+```
+
+## Elección de la tecnología
+
+| Opción | ¿Filtros que recalculan? | ¿Necesita servidor R? | Decisión |
+|---|---|---|---|
+| R Markdown con gráficas estáticas | No | No | Descartada: no es interactivo |
+| `flexdashboard` sin Shiny | Solo con widgets de JavaScript; no recalcula promedios | No | Descartada: los KPI no se actualizarían |
+| `flexdashboard` + Shiny | Sí | Sí | Válida |
+| **Shiny + bslib** | **Sí** | **Sí** | **Elegida**: control total del diseño con CSS Grid, menos dependencias y el mismo código sirve en RStudio y en PowerShell |
+
+**Consecuencia:** el dashboard interactivo se usa con R abierto como servidor local. No es un archivo HTML que se pueda enviar por correo.
+
+**Versión HTML para compartir:** además se genera `salidas/dashboard.html` desde `dashboard/dashboard_estatico.Rmd`. Reutiliza las mismas funciones de `graficas.R` y el mismo `estilos.css`, pero R calcula todo **una sola vez**, al generar el archivo:
+
+| | `dashboard/app.R` (Shiny) | `salidas/dashboard.html` |
+|---|---|---|
+| Se abre con | `shiny::runApp("dashboard")` | Doble clic (cualquier navegador) |
+| Necesita R | Sí, mientras se usa | Solo para generarlo |
+| Filtros | Año, dependencia y tipo; recalculan todo | No hay filtros: pestañas fijas "Todos los años" y una por año |
+| Gráficas | Se redibujan en cada cambio | Imágenes PNG incrustadas en el HTML |
+| Se puede enviar por correo | No | Sí (un solo archivo, ~1 MB) |
+
+```powershell
+# PowerShell, en la carpeta proyecto_r: genera solo el HTML
+Rscript scripts/generar_dashboard.R --solo-html
+```
+
+Lo único que hace el navegador en el HTML es cambiar de pestaña (JavaScript de Bootstrap incluido por R Markdown). Para compartir un informe por año con texto explicativo, usa el informe con parámetros del módulo 4.
+
+## Arquitectura
+
+```
+datos/datos.xlsx
+      │  cargar_datos()            scripts/validar_datos.R   (lectura, limpieza, validación)
+      ▼
+  programas (data frame limpio)
+      │  filtros (año, dependencia, tipo)
+      ▼
+  datos_filtrados()  ── reactive ──┐                         dashboard/app.R   (UI + servidor)
+      │                            │
+      ▼                            ▼
+  calcular_kpis()            grafica_*()                     dashboard/graficas.R (cálculos y gráficas)
+      │                            │
+      └──────────► navegador ◄─────┘                         dashboard/estilos.css (apariencia)
+```
+
+Separar los archivos permite probar los cálculos sin abrir el dashboard. Las funciones de `graficas.R` funcionan en cualquier script o `.Rmd`, como se muestra al final de este módulo.
+
+## Conceptos de Shiny
+
+| Concepto | Qué es | En `app.R` |
+|---|---|---|
+| **UI** | Qué se ve: controles, tarjetas y espacios para las gráficas | `ui <- page_fluid(...)` |
+| **Server** | La función que calcula las salidas | `server <- function(input, output, session)` |
+| **Input** | Valor de un control, que se lee en el servidor | `input$anio`, `input$dependencia` |
+| **Output** | Resultado que se dibuja en la UI | `output$g_estatus <- renderPlot(...)` |
+| **reactive()** | Cálculo que se repite solo cuando cambian sus inputs | `datos_filtrados <- reactive(...)` |
+| **observeEvent()** | Acción ante un evento (por ejemplo, un clic) | Botón "Limpiar filtros" |
+| **validate(need())** | Mensaje claro en lugar de un error | "No hay programas que cumplan los filtros" |
+
+El flujo: cambias un filtro → el navegador envía el nuevo `input` a R → `datos_filtrados()` se recalcula → todas las salidas que dependen de él se vuelven a dibujar.
+
+## Correspondencia con la imagen de referencia
+
+| Elemento de la referencia | Implementación | Pregunta que responde |
+|---|---|---|
+| 7 tarjetas KPI con icono | `tarjeta_kpi()` + `calcular_kpis()` | ¿Cuál es la situación general? |
+| Panel de filtros: año, dependencia, tipo y "Limpiar filtros" | `checkboxGroupInput`, `selectInput`, `actionButton` | ¿Qué subconjunto quiero analizar? |
+| Avance global por dependencia | `grafica_avance_dependencia()` | ¿Qué dependencias van más adelantadas o rezagadas? |
+| Distribución por estatus (dona) | `grafica_estatus()` | ¿En qué estatus están los programas? |
+| Programas por tipo (dona) | `grafica_tipo()` | ¿Qué tipos predominan? |
+| Comparativo por año | `grafica_comparativo_anio()` | ¿Mejoró el avance de 2024 a 2025? |
+| Top 10 dependencias | `grafica_top_dependencias()` | ¿Quién concentra más programas? |
+| Responsables sin asignar | `grafica_responsables()` | ¿Cuántos programas no tienen responsable? |
+| *(Agregado)* Tabla de detalle | `tableOutput("tabla")` | ¿Qué programas concretos hay detrás de los números? |
+
+**Diferencias y limitaciones conocidas**
+
+- **Cifras:** la imagen muestra otra extracción (258 programas). El dashboard usa siempre `datos.xlsx`.
+- **Etiquetas de estatus y tipo:** se definen en un solo lugar, `ETIQUETAS_ESTATUS` y `ETIQUETAS_TIPO` en `scripts/validar_datos.R`. El Excel trae los estatus 0 a 3; el 4 ("Liberado Titular AE") aparecerá si llega en datos futuros.
+- **Definiciones de KPI:** los avances son proporciones (1 = 100 %). "Completo" significa avance global de 100 %; "con avance", mayor que 0 % y menor que 100 %.
+- **Nombres de dependencias:** en las gráficas se usa la sigla entre paréntesis o se recortan a 34 caracteres para que quepan.
+
+## Diseño adaptable y estados vacíos
+
+`dashboard/estilos.css` usa CSS Grid con tres puntos de corte:
+
+| Ancho de pantalla | KPI por fila | Gráficas por fila | Filtros |
+|---|---|---|---|
+| Más de 1400 px | 7 | 3 | A la izquierda, fijos al desplazarse |
+| 993–1400 px | 4 | 2 | A la izquierda |
+| 601–992 px | 2 | 2 | Arriba |
+| 600 px o menos | 1 | 1 | Arriba |
+
+Si un filtro deja 0 programas (por ejemplo, si desmarcas los dos años), cada tarjeta muestra "No hay programas que cumplan los filtros seleccionados." en lugar de un error. Los KPI de porcentaje muestran "Sin dato".
+
+## Cómo ejecutarlo
+
+```{r m7-ejecutar, eval = FALSE}
+# En RStudio, con proyecto_r.Rproj abierto:
+shiny::runApp("dashboard")
+```
+
+```powershell
+# En PowerShell, dentro de la carpeta proyecto_r:
+Rscript scripts/generar_dashboard.R
+# Abre http://127.0.0.1:3838 en el navegador. Ctrl + C para detenerlo.
+```
+
+En RStudio también puedes abrir `dashboard/app.R` y presionar el botón **Run App**.
+
+## Las mismas funciones fuera de Shiny
+
+Como los cálculos están separados de la interfaz, aquí se generan las gráficas del dashboard **sin filtros**. Esta versión es estática.
+
+```{r m7-funciones}
+if (!exists("programas")) {
+  source(file.path("scripts", "validar_datos.R"), encoding = "UTF-8")
+  programas <- cargar_datos()
+}
+source(file.path("dashboard", "graficas.R"), encoding = "UTF-8")
+str(calcular_kpis(programas))
+```
+
+```{r m7-g1, fig.height = 5.5, fig.cap = "Avance global por dependencia."}
+grafica_avance_dependencia(programas)
+```
+
+```{r m7-g2, fig.height = 3.5, fig.width = 8, fig.cap = "Distribución por estatus y por tipo."}
+grafica_estatus(programas)
+grafica_tipo(programas)
+```
+
+```{r m7-g3, fig.height = 3.5, fig.cap = "Comparativo por año."}
+grafica_comparativo_anio(programas)
+```
+
+```{r m7-g4, fig.height = 4, fig.cap = "Top 10 dependencias y responsables sin asignar."}
+grafica_top_dependencias(programas)
+grafica_responsables(programas)
+```
+
+**Ejercicio:** agrega al dashboard un KPI "Dependencias" con el número de dependencias distintas en los datos filtrados.
+
+<details><summary>Ver solución</summary>
+
+1. En `ui`, dentro de `div(class = "fila-kpi", ...)`, agrega:
+   `tarjeta_kpi("kpi_dependencias", "Dependencias", "building")`
+2. En `server`, agrega:
+
+```{r m7-sol, eval = FALSE}
+output$kpi_dependencias <- renderText(
+  length(unique(datos_filtrados()$DEPENDENCIA))
+)
+```
+
+3. En `estilos.css`, cambia `repeat(7, ...)` por `repeat(8, ...)` en `.fila-kpi`.
+
+</details>
+
+**Errores comunes**
+
+| Síntoma | Causa | Solución |
+|---|---|---|
+| `cannot open file '../scripts/validar_datos.R'` | Se ejecutó `app.R` con `source()` | Usa `shiny::runApp("dashboard")` o el botón Run App |
+| `Error in .getReactiveEnvironment()...` / `Operation not allowed without an active reactive context` | Se leyó `input$...` fuera de `reactive()` o `render*()` | Mueve ese código dentro de un contexto reactivo |
+| La página no cambia al filtrar | La salida no usa `datos_filtrados()` | Revisa que cada `render*` lo llame |
+| `Listening on http://127.0.0.1:...` y la consola se bloquea | Es normal: R está atendiendo al dashboard | Detenlo con `Esc` / Stop en RStudio o `Ctrl + C` en PowerShell |
+| Error de puerto en uso | Otro dashboard sigue abierto | Cierra el otro o cambia `port` en `generar_dashboard.R` |

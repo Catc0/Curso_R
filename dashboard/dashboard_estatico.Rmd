@@ -1,0 +1,136 @@
+---
+title: "Dashboard de avance de programas (versión HTML)"
+lang: es
+output:
+  html_document:
+    self_contained: true
+    css: [estilos.css, estilos_estatico.css]
+---
+
+```{r configuracion, include = FALSE}
+# ============================================================
+# dashboard/dashboard_estatico.Rmd
+# Versión HTML autónoma del dashboard: un solo archivo que se abre
+# con doble clic, sin R ni servidor. Se genera en
+# salidas/dashboard.html con:
+#   Rscript scripts/generar_dashboard.R
+#   (o Rscript scripts/generar_documentacion.R)
+#
+# Diferencia con dashboard/app.R: aquí R calcula TODO una sola vez,
+# al generar el archivo. El navegador solo muestra el resultado y
+# cambia de pestaña (una por año). No hay filtros que recalculen.
+# ============================================================
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(ggplot2)
+
+# rmarkdown::render() ejecuta el .Rmd con dashboard/ como carpeta de trabajo.
+source(file.path("..", "scripts", "validar_datos.R"), encoding = "UTF-8")
+source("graficas.R", encoding = "UTF-8")
+
+programas <- cargar_datos(file.path("..", "datos", "datos.xlsx"))
+fecha_corte <- format(max(programas$ULTIMA_MODIFICACION, na.rm = TRUE), "%d/%m/%Y")
+
+MENSAJE_VACIO <- "No hay programas para esta vista."
+
+# Icono de Font Awesome como SVG incrustado (no necesita Internet).
+icono <- function(nombre) fontawesome::fa(nombre, fill = "#ffffff", height = "1em")
+
+# Convierte una gráfica ggplot en una imagen PNG incrustada (base64).
+imagen_grafica <- function(grafica, alto = 3.6) {
+  if (is.null(grafica)) {
+    return(paste0('<p class="estado-vacio">', MENSAJE_VACIO, "</p>"))
+  }
+  archivo <- tempfile(fileext = ".png")
+  ggsave(archivo, grafica, width = 6, height = alto, dpi = 110, bg = "white")
+  paste0('<img class="grafica" alt="" src="', knitr::image_uri(archivo), '">')
+}
+
+tarjeta_kpi <- function(titulo, valor, nombre_icono) {
+  paste0(
+    '<div class="kpi"><div class="kpi-icono">', icono(nombre_icono), "</div>",
+    '<div class="kpi-texto"><div class="kpi-titulo">', titulo, "</div>",
+    '<div class="kpi-valor">', valor, "</div></div></div>"
+  )
+}
+
+tarjeta <- function(titulo, contenido, clase = "") {
+  paste0('<div class="card tarjeta ', clase, '"><div class="card-header">', titulo,
+         '</div><div class="card-body">', contenido, "</div></div>")
+}
+
+# Tabla de detalle en HTML.
+tabla_detalle <- function(d) {
+  d <- d[order(d$DEPENDENCIA, d$CLAVE), ]
+  tabla <- data.frame(
+    Clave = d$CLAVE,
+    Programa = d$PROGRAMA,
+    Dependencia = d$DEPENDENCIA_CORTA,
+    `Año` = as.character(d$ANIO),
+    Estatus = as.character(d$ESTATUS_ETIQUETA),
+    `Avance global` = formato_pct(d$AVANCE_GLOBAL),
+    `Titular RP` = ifelse(is.na(d$TITULAR_RP), "Sin asignar", d$TITULAR_RP),
+    check.names = FALSE
+  )
+  paste(knitr::kable(tabla, format = "html", row.names = FALSE,
+                     table.attr = 'class="table table-striped table-condensed"'),
+        collapse = "\n")
+}
+
+# Una vista completa del dashboard (KPI + gráficas + tabla) para un subconjunto.
+vista_dashboard <- function(d) {
+  if (nrow(d) == 0) return(paste0('<p class="estado-vacio">', MENSAJE_VACIO, "</p>"))
+  k <- calcular_kpis(d)
+  kpis <- paste0(
+    '<div class="fila-kpi">',
+    tarjeta_kpi("Total programas", formato_entero(k$total_programas), "list"),
+    tarjeta_kpi("Programas completos", formato_entero(k$completos), "circle-check"),
+    tarjeta_kpi("Programas con avance", formato_entero(k$con_avance), "chart-line"),
+    tarjeta_kpi("Total apoyos", formato_entero(k$total_apoyos), "hand-holding-heart"),
+    tarjeta_kpi("Avance programa", formato_pct(k$avance_programa), "percent"),
+    tarjeta_kpi("Avance apoyos", formato_pct(k$avance_apoyos), "percent"),
+    tarjeta_kpi("Avance global", formato_pct(k$avance_global), "percent"),
+    "</div>"
+  )
+  graficas <- paste0(
+    '<div class="graficas">',
+    tarjeta("Avance global por dependencia", imagen_grafica(grafica_avance_dependencia(d), 4.4)),
+    tarjeta("Distribución por estatus", imagen_grafica(grafica_estatus(d), 4.4)),
+    tarjeta("Programas por tipo", imagen_grafica(grafica_tipo(d), 4.4)),
+    tarjeta("Comparativo por año", imagen_grafica(grafica_comparativo_anio(d))),
+    tarjeta("Top 10 dependencias con más programas", imagen_grafica(grafica_top_dependencias(d))),
+    tarjeta("Responsables sin asignar", imagen_grafica(grafica_responsables(d))),
+    tarjeta("Detalle de programas",
+            paste0('<div class="tabla-scroll">', tabla_detalle(d), "</div>"),
+            "tarjeta-tabla"),
+    "</div>"
+  )
+  paste0(kpis, graficas)
+}
+```
+
+```{r encabezado, results = "asis"}
+cat(paste0(
+  '<div class="encabezado"><h1>Avance de programas</h1>',
+  '<span class="corte">Última modificación registrada: ', fecha_corte,
+  " · Generado el ", format(Sys.Date(), "%d/%m/%Y"), "</span></div>",
+  '<div class="aviso-estatico"><strong>Versión HTML fija.</strong> ',
+  "Este archivo se abre sin R ni Internet, pero no tiene filtros: cada pestaña ",
+  "es una vista calculada al generarlo. Para filtrar por dependencia y tipo, ",
+  'inicia el dashboard interactivo con <code>shiny::runApp("dashboard")</code>.</div>'
+))
+```
+
+## Vista {.tabset .tabset-pills}
+
+```{r vistas, results = "asis"}
+# Una pestaña con todos los años y otra por cada año del Excel.
+vistas <- list("Todos los años" = programas)
+for (anio in sort(unique(programas$ANIO))) {
+  vistas[[as.character(anio)]] <- programas[programas$ANIO == anio, ]
+}
+
+for (nombre in names(vistas)) {
+  cat("\n\n### ", nombre, "\n\n", sep = "")
+  cat(vista_dashboard(vistas[[nombre]]), "\n\n")
+}
+```

@@ -1,0 +1,68 @@
+<!--
+  manual/recursos/buscar.html
+  JavaScript que se ejecuta en el navegador (no en R):
+  1. Agrega un buscador que filtra el menú lateral.
+  2. Agrega un botón para volver al inicio de la página.
+-->
+<button id="boton-arriba" title="Volver arriba" aria-label="Volver arriba">↑</button>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // tocify construye el menú después de cargar la página; esperamos a que exista.
+  var intentos = 0;
+  var esperarMenu = setInterval(function () {
+    var toc = document.getElementById("TOC");
+    intentos++;
+    if (toc && toc.querySelector(".tocify-item")) {
+      clearInterval(esperarMenu);
+      crearBuscador(toc);
+    } else if (intentos > 50) {
+      clearInterval(esperarMenu);
+    }
+  }, 100);
+
+  function crearBuscador(toc) {
+    var caja = document.createElement("input");
+    caja.type = "search";
+    caja.id = "buscador-toc";
+    caja.placeholder = "Buscar en el menú...";
+    caja.setAttribute("aria-label", "Buscar en el menú");
+
+    var vacio = document.createElement("div");
+    vacio.id = "buscador-sin-resultados";
+    vacio.textContent = "Sin resultados";
+
+    toc.insertBefore(vacio, toc.firstChild);
+    toc.insertBefore(caja, toc.firstChild);
+
+    caja.addEventListener("input", function () {
+      var texto = normalizar(caja.value);
+      var visibles = 0;
+      toc.querySelectorAll(".tocify-item").forEach(function (item) {
+        var coincide = texto === "" || normalizar(item.textContent).indexOf(texto) !== -1;
+        item.style.display = coincide ? "" : "none";
+        if (coincide) visibles++;
+      });
+      // Mostrar todas las subsecciones mientras se busca.
+      toc.querySelectorAll(".tocify-subheader").forEach(function (sub) {
+        if (texto !== "") sub.style.display = "block";
+      });
+      vacio.style.display = visibles === 0 ? "block" : "none";
+    });
+  }
+
+  // Quita acentos y mayúsculas para comparar ("Módulo" = "modulo").
+  function normalizar(s) {
+    return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+
+  // Botón "volver arriba"
+  var boton = document.getElementById("boton-arriba");
+  window.addEventListener("scroll", function () {
+    boton.style.display = window.scrollY > 600 ? "block" : "none";
+  });
+  boton.addEventListener("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+});
+</script>

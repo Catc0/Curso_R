@@ -1,0 +1,493 @@
+# Módulo 1. Fundamentos de R {#modulo-1}
+
+**Objetivo:** usar variables, tipos de datos, operadores, funciones, condicionales, ciclos y vectores, que son la base de todo lo demás.
+
+Cada tema tiene la misma estructura: explicación, sintaxis, ejemplo ejecutable, explicación del resultado, ejercicio con solución y errores comunes. En los ejemplos, el texto que empieza con `##` es lo que R imprime.
+
+## Variables y asignación
+
+Una **variable** es un nombre que guarda un valor. En R se asigna con `<-` (también funciona `=`, pero en R se recomienda `<-`).
+
+**Sintaxis:** `nombre <- valor`
+
+```{r variables}
+total_programas <- 250
+nombre_curso <- "Curso de R"
+total_programas
+nombre_curso
+```
+
+**Resultado:** R guarda cada valor en memoria. Al escribir el nombre de la variable, R muestra su contenido. En RStudio, las variables aparecen en el panel **Environment**.
+
+Reglas para los nombres: empiezan con una letra, no llevan espacios ni acentos y distinguen mayúsculas de minúsculas (`Total` y `total` son distintas). En este curso usamos `snake_case`: `avance_global`.
+
+**Ejercicio:** crea la variable `anio_actual` con el valor 2025 y la variable `anio_anterior` con el valor del año anterior, calculado a partir de la primera.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-variables}
+anio_actual <- 2025
+anio_anterior <- anio_actual - 1
+anio_anterior
+```
+
+</details>
+
+**Errores comunes**
+
+```{r err-variables, error = TRUE}
+Total_programas   # mayúscula distinta: R no la encuentra
+```
+
+`object 'X' not found` significa que la variable no existe o que el nombre está mal escrito.
+
+## Constantes y valores
+
+R trae algunas constantes integradas. Las más útiles:
+
+```{r constantes}
+pi
+LETTERS[1:5]   # letras mayúsculas
+month.name[1:3] # nombres de los meses en inglés
+TRUE; FALSE    # valores lógicos
+```
+
+R no tiene constantes "protegidas": cualquier variable se puede sobrescribir. Por convención, escribimos en MAYÚSCULAS los valores que no deben cambiar, por ejemplo `HOJA_DATOS <- "Exportar Hoja de Trabajo"` en `scripts/validar_datos.R`.
+
+**Ejercicio:** calcula el área de un círculo de radio 3 usando `pi`.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-constantes}
+radio <- 3
+pi * radio^2
+```
+
+</details>
+
+**Error común:** escribir `T <- 0` o `pi <- 3` cambia esos valores para el resto de la sesión. Escribe siempre `TRUE` y `FALSE` completos.
+
+## Tipos de datos
+
+| Tipo | Ejemplo | Para qué |
+|---|---|---|
+| `numeric` | `0.8333`, `250` | Números con decimales |
+| `integer` | `2025L` | Números enteros (la `L` los marca) |
+| `character` | `"Secretaría de Salud"` | Texto, siempre entre comillas |
+| `logical` | `TRUE`, `FALSE` | Verdadero o falso |
+| `Date` | `as.Date("2026-11-09")` | Fechas |
+
+**Sintaxis:** `class(x)` dice el tipo; `is.numeric(x)`, `is.character(x)`... lo preguntan; `as.numeric(x)`, `as.character(x)`... lo convierten.
+
+```{r tipos}
+avance <- ".8333"     # así viene el avance en el Excel: ¡como texto!
+class(avance)
+avance_num <- as.numeric(avance)
+class(avance_num)
+avance_num * 100
+```
+
+**Resultado:** el Excel guarda los avances como texto. Para hacer cálculos hay que convertirlos con `as.numeric()`. Esto es justo lo que hace `cargar_datos()` en `scripts/validar_datos.R`.
+
+**Ejercicio:** convierte `"2025"` a número entero y comprueba su tipo.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-tipos}
+anio <- as.integer("2025")
+class(anio)
+```
+
+</details>
+
+**Errores comunes**
+
+```{r err-tipos, error = TRUE}
+".8333" * 100           # no se puede multiplicar texto
+as.numeric(" ")         # un espacio no es un número: produce NA
+```
+
+## Operadores aritméticos
+
+| Operador | Significado | Ejemplo | Resultado |
+|---|---|---|---|
+| `+` `-` `*` `/` | Suma, resta, multiplicación, división | `7 / 2` | `3.5` |
+| `^` | Potencia | `2^3` | `8` |
+| `%/%` | División entera | `7 %/% 2` | `3` |
+| `%%` | Residuo (módulo) | `7 %% 2` | `1` |
+
+```{r aritmeticos}
+avance_programa <- 1
+avance_apoyos <- 0.8333
+avance_global <- (avance_programa + avance_apoyos) / 2
+avance_global
+round(avance_global * 100, 1)
+```
+
+**Resultado:** así se calcula el avance global en los datos: el promedio de los dos avances (ver la hoja `SQL` del Excel). Los paréntesis cambian el orden de las operaciones: primero se suma y después se divide.
+
+**Ejercicio:** 250 programas se reparten en partes iguales entre 19 dependencias. ¿Cuántos tocan a cada una y cuántos sobran?
+
+<details><summary>Ver solución</summary>
+
+```{r sol-aritmeticos}
+250 %/% 19   # a cada una
+250 %% 19    # sobran
+```
+
+</details>
+
+**Error común:** olvidar los paréntesis. `1 + 0.8333 / 2` da `1.41665`, no `0.91665`.
+
+## Operadores de comparación
+
+Comparan dos valores y devuelven `TRUE` o `FALSE`.
+
+| Operador | Significado |
+|---|---|
+| `==` | igual a |
+| `!=` | distinto de |
+| `>` `<` | mayor que, menor que |
+| `>=` `<=` | mayor o igual, menor o igual |
+| `%in%` | ¿está dentro de un conjunto? |
+
+```{r comparacion}
+avance_global <- 0.91665
+avance_global == 1      # ¿programa completo?
+avance_global >= 0.9
+"S" %in% c("S", "U")    # ¿el tipo es S o U?
+```
+
+**Ejercicio:** comprueba si el año 2024 es distinto de 2025.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-comparacion}
+2024 != 2025
+```
+
+</details>
+
+**Errores comunes:** usar `=` en lugar de `==` para comparar, y comparar decimales con `==`:
+
+```{r err-comparacion}
+0.1 + 0.2 == 0.3                 # FALSE por redondeo interno
+isTRUE(all.equal(0.1 + 0.2, 0.3)) # forma segura
+```
+
+## Operadores lógicos
+
+Combinan condiciones.
+
+| Operador | Significado | Ejemplo |
+|---|---|---|
+| `&` | Y: las dos deben cumplirse | `x > 0 & x < 1` |
+| `\|` | O: basta con una | `tipo == "S" \| tipo == "U"` |
+| `!` | NO: invierte el resultado | `!is.na(x)` |
+
+```{r logicos}
+avance <- 0.6
+avance > 0 & avance < 1   # ¿tiene avance pero no está completo?
+!(avance == 1)
+```
+
+**Resultado:** así se define "programa con avance" en el dashboard: avance mayor que 0 **y** menor que 1.
+
+**Ejercicio:** escribe una condición que sea `TRUE` si un programa es del año 2025 **o** de tipo `"S"`. Prueba con `anio <- 2024` y `tipo <- "S"`.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-logicos}
+anio <- 2024
+tipo <- "S"
+anio == 2025 | tipo == "S"
+```
+
+</details>
+
+**Error común:** `&&` y `||` solo aceptan **un** valor (se usan en `if`). Para vectores usa `&` y `|`.
+
+## Funciones integradas y funciones personalizadas
+
+Una **función** recibe datos (argumentos), hace algo y devuelve un resultado. R trae cientos de funciones: `mean()`, `sum()`, `round()`, `nchar()`, `toupper()`...
+
+```{r funciones-integradas}
+avances <- c(1, 0.8333, 0.5, 1)
+mean(avances)
+round(mean(avances), 2)
+toupper("isssTe")
+```
+
+Para crear tus propias funciones:
+
+**Sintaxis:**
+
+```r
+nombre <- function(argumento1, argumento2 = valor_por_defecto) {
+  # instrucciones
+  resultado   # la última línea es lo que se devuelve
+}
+```
+
+```{r funciones-propias}
+formato_pct <- function(x, decimales = 1) {
+  paste0(round(x * 100, decimales), "%")
+}
+formato_pct(0.91665)
+formato_pct(0.91665, decimales = 0)
+```
+
+**Resultado:** la función convierte una proporción en un texto de porcentaje. El dashboard usa una versión parecida, en `dashboard/graficas.R`.
+
+**Ejercicio:** crea una función `es_completo(avance)` que devuelva `TRUE` si el avance es 1 o mayor.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-funciones}
+es_completo <- function(avance) {
+  avance >= 1
+}
+es_completo(c(1, 0.5))
+```
+
+</details>
+
+**Errores comunes**
+
+```{r err-funciones, error = TRUE}
+Mean(c(1, 2))        # R distingue mayúsculas: la función es mean()
+formato_pct()        # falta el argumento x, que no tiene valor por defecto
+```
+
+## Argumentos y valores de retorno
+
+Los argumentos pueden pasarse **por posición** o **por nombre**. Con `return()` sales de la función antes de llegar al final.
+
+```{r argumentos}
+round(3.14159, 2)              # por posición
+round(digits = 2, x = 3.14159) # por nombre: el orden no importa
+
+clasificar <- function(avance) {
+  if (is.na(avance)) return("Sin dato")
+  if (avance >= 1) return("Completo")
+  "En proceso"
+}
+clasificar(NA)
+clasificar(1)
+clasificar(0.4)
+```
+
+Para devolver **varios** valores, devuelve una lista:
+
+```{r retorno-lista}
+resumen <- function(x) {
+  list(minimo = min(x), maximo = max(x), promedio = mean(x))
+}
+resumen(c(0.5, 1, 0.8))$promedio
+```
+
+**Ejercicio:** escribe `porcentaje(parte, total, decimales = 1)` que devuelva el porcentaje redondeado. Pruébala con 170 de 250.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-argumentos}
+porcentaje <- function(parte, total, decimales = 1) {
+  round(parte / total * 100, decimales)
+}
+porcentaje(170, 250)
+```
+
+</details>
+
+**Error común:** poner `print()` en lugar de devolver el valor. `print()` muestra el resultado, pero no permite guardarlo con `x <- f()` de forma limpia.
+
+## Condicionales: if, else e ifelse
+
+`if` decide qué hacer con **un** valor; `ifelse()` decide para **cada** elemento de un vector.
+
+**Sintaxis:**
+
+```r
+if (condicion) {
+  ...
+} else if (otra_condicion) {
+  ...
+} else {
+  ...
+}
+
+ifelse(condicion, valor_si_verdadero, valor_si_falso)
+```
+
+```{r condicionales}
+avance <- 0.75
+if (avance >= 1) {
+  mensaje <- "Programa completo"
+} else if (avance > 0) {
+  mensaje <- "Programa con avance"
+} else {
+  mensaje <- "Sin avance"
+}
+mensaje
+
+avances <- c(1, 0.75, 0, 1)
+ifelse(avances >= 1, "Completo", "Pendiente")
+```
+
+**Ejercicio:** con `ifelse()`, marca como `"Sin asignar"` los responsables vacíos de `c("ana.lopez", NA, "luis.diaz")`.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-condicionales}
+responsables <- c("ana.lopez", NA, "luis.diaz")
+ifelse(is.na(responsables), "Sin asignar", responsables)
+```
+
+</details>
+
+**Errores comunes**
+
+```{r err-condicionales, error = TRUE}
+if (c(1, 0.5) >= 1) "completo"   # if necesita UN solo valor
+if (NA > 0) "positivo"           # if no acepta NA
+```
+
+Además, `else` debe ir en la misma línea que la llave `}` de cierre.
+
+## Estructuras de repetición: for, while y repeat
+
+| Ciclo | Cuándo usarlo |
+|---|---|
+| `for` | Sabes cuántas veces repetir (recorrer un vector) |
+| `while` | Repetir **mientras** se cumpla una condición |
+| `repeat` | Repetir hasta que llegues a `break` |
+
+```{r ciclos}
+# for: recorrer los años
+for (anio in c(2024, 2025)) {
+  cat("Procesando el año", anio, "\n")
+}
+
+# while: duplicar hasta superar 100
+apoyos <- 1
+while (apoyos <= 100) {
+  apoyos <- apoyos * 2
+}
+apoyos
+
+# repeat: buscar el primer avance completo
+avances <- c(0.5, 0.8, 1, 0.9)
+i <- 0
+repeat {
+  i <- i + 1
+  if (avances[i] >= 1) break
+}
+i
+```
+
+**Resultado:** el `for` imprime una línea por año; el `while` se detiene en 128; el `repeat` encuentra que la tercera posición es la primera completa.
+
+En R casi siempre hay una alternativa **vectorizada** más corta: `which(avances >= 1)[1]` da el mismo resultado que el `repeat`.
+
+**Ejercicio:** usa un `for` para sumar los números del 1 al 10 y compara con `sum(1:10)`.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-ciclos}
+suma <- 0
+for (n in 1:10) suma <- suma + n
+suma
+sum(1:10)
+```
+
+</details>
+
+**Error común:** un `while` cuya condición nunca cambia se repite para siempre. Para detenerlo, presiona `Esc` en la consola de RStudio.
+
+## Vectores, indexación, filtrado y operaciones vectorizadas
+
+Un **vector** guarda varios valores del **mismo tipo**. Se crea con `c()`.
+
+```{r vectores}
+avances <- c(1, 0.8333, 0.5, 1, 0.25)
+length(avances)
+
+# Indexación: posiciones entre corchetes (empiezan en 1)
+avances[1]
+avances[c(2, 4)]
+avances[-1]        # todos menos el primero
+
+# Filtrado con una condición
+avances[avances >= 0.8]
+sum(avances >= 1)  # cuántos están completos (TRUE cuenta como 1)
+
+# Operación vectorizada: se aplica a todos sin escribir un ciclo
+avances * 100
+
+# Vectores con nombre
+apoyos <- c(ISSSTE = 3, IMSS = 5, INPI = 1)
+apoyos["IMSS"]
+```
+
+**Resultado:** `avances * 100` multiplica los cinco valores a la vez. `sum(avances >= 1)` cuenta los completos porque `TRUE` vale 1.
+
+**Ejercicio:** del vector `apoyos <- c(1, 2, 25, 4, 8)` obtén los valores mayores que 3 y su promedio.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-vectores}
+apoyos <- c(1, 2, 25, 4, 8)
+apoyos[apoyos > 3]
+mean(apoyos[apoyos > 3])
+```
+
+</details>
+
+**Errores comunes**
+
+```{r err-vectores}
+c(1, "dos", 3)    # mezclar tipos convierte todo en texto
+avances[10]       # posición inexistente: devuelve NA, no un error
+```
+
+## Valores faltantes: NA, NULL, NaN e Inf
+
+| Valor | Significado | Ejemplo de origen |
+|---|---|---|
+| `NA` | Dato faltante | Celda vacía en el Excel |
+| `NULL` | "Nada": el objeto no existe | Columna inexistente: `datos$NO_EXISTE` |
+| `NaN` | Resultado matemático indefinido | `0 / 0` |
+| `Inf` | Infinito | `1 / 0` |
+
+```{r faltantes}
+avances <- c(1, NA, 0.5)
+mean(avances)                 # un NA "contamina" el resultado
+mean(avances, na.rm = TRUE)   # se ignoran los NA
+is.na(avances)
+sum(is.na(avances))           # cuántos faltan
+
+0 / 0
+1 / 0
+length(NULL)
+```
+
+**Resultado:** 19 programas del Excel no tienen avance global. Por eso todos los promedios del curso usan `na.rm = TRUE`. Si los tratáramos como 0, el promedio bajaría artificialmente.
+
+**Ejercicio:** reemplaza los `NA` de `c(3, NA, 5)` por 0 y calcula la suma.
+
+<details><summary>Ver solución</summary>
+
+```{r sol-faltantes}
+x <- c(3, NA, 5)
+x[is.na(x)] <- 0
+sum(x)
+```
+
+</details>
+
+**Error común:** comparar con `== NA`. El resultado siempre es `NA`; usa `is.na()`.
+
+```{r err-faltantes}
+NA == NA
+is.na(NA)
+```

@@ -1,0 +1,248 @@
+# Módulo 3. RStudio y productividad {#modulo-3}
+
+**Objetivo:** moverte con soltura en RStudio, ejecutar código de distintas formas, usar atajos, organizar proyectos, leer errores y administrar paquetes.
+
+## Interfaz de RStudio
+
+RStudio se divide en cuatro paneles:
+
+| Panel | Ubicación habitual | Para qué sirve |
+|---|---|---|
+| **Editor** (Source) | Arriba a la izquierda | Escribir y guardar scripts `.R` y documentos `.Rmd` |
+| **Consola** (Console) | Abajo a la izquierda | Ejecutar código y ver resultados al momento. Incluye pestañas **Terminal** (PowerShell) y **Background Jobs** |
+| **Entorno / Historial** (Environment, History) | Arriba a la derecha | Ver las variables creadas y los comandos ejecutados |
+| **Archivos / Gráficas / Paquetes / Ayuda** | Abajo a la derecha | Navegar carpetas, ver gráficas, instalar paquetes y leer la ayuda |
+
+Puedes reacomodarlos en *Tools → Global Options → Pane Layout*.
+
+```{r m3-entorno}
+x <- 10
+ls()                 # variables del entorno (lo mismo que muestra el panel Environment)
+exists("x")
+rm(x)                # eliminar una variable
+exists("x")
+```
+
+**Ejercicio:** crea tres variables, compruébalas con `ls()` y después borra todas con `rm(list = ls())`.
+
+<details><summary>Ver solución</summary>
+
+```{r m3-sol-entorno, eval = FALSE}
+a <- 1; b <- 2; c <- 3
+ls()
+rm(list = ls())
+ls()
+```
+
+</details>
+
+**Error común:** confiar en variables que "están en el Environment" pero no en el script. Si cierras RStudio, se pierden. Todo debe quedar escrito en el script.
+
+## Scripts .R y ejecución por líneas o bloques
+
+| Forma | Cómo | Cuándo |
+|---|---|---|
+| Línea actual o selección | `Ctrl + Enter` | Probar paso a paso |
+| Todo el script | `Ctrl + Shift + Enter` o botón **Source** | Ejecutar el programa completo |
+| Sección | `Ctrl + Alt + T` | Ejecutar un bloque marcado con `# Título ----` |
+| Desde otro script | `source("ruta/script.R")` | Reutilizar funciones |
+| Desde PowerShell | `Rscript ruta/script.R` | Automatizar sin abrir RStudio |
+
+Las **secciones** se crean con un comentario que termina en cuatro o más guiones. RStudio las muestra en el menú de navegación (abajo del editor) y permite plegarlas:
+
+```r
+# 1. CARGAR DATOS ------------------------------------------
+# 2. CALCULAR INDICADORES ----------------------------------
+```
+
+**Ejercicio:** abre `ejemplos/01_fundamentos.R`, ejecuta solo la sección 1 con `Ctrl + Alt + T` y después todo el script con **Source**.
+
+**Error común:** ejecutar una línea que usa una variable creada más arriba sin haber ejecutado esa línea antes. Aparece `object 'X' not found`.
+
+## Atajos de teclado
+
+| Prioridad | Windows / Linux | macOS | Función | Contexto |
+|---|---|---|---|---|
+| Alta | `Ctrl + Enter` | `Cmd + Return` | Ejecutar línea o selección | Editor |
+| Alta | `Ctrl + Shift + Enter` | `Cmd + Shift + Return` | Ejecutar todo el script (Source) | Editor |
+| Alta | `Ctrl + S` | `Cmd + S` | Guardar | Editor |
+| Alta | `Alt + -` | `Option + -` | Escribir el operador `<-` | Editor y consola |
+| Alta | `Ctrl + Shift + M` | `Cmd + Shift + M` | Escribir el operador *pipe* (encadena funciones) | Editor y consola |
+| Alta | `Ctrl + Shift + C` | `Cmd + Shift + C` | Comentar o descomentar líneas | Editor |
+| Alta | `Ctrl + L` | `Ctrl + L` | Limpiar la consola | Consola |
+| Alta | `Esc` | `Esc` | Interrumpir la ejecución | Consola |
+| Alta | `Tab` / `Ctrl + Space` | `Tab` / `Ctrl + Space` | Autocompletar | Editor y consola |
+| Media | `Ctrl + Shift + N` | `Cmd + Shift + N` | Nuevo script | General |
+| Media | `Ctrl + Alt + T` | `Cmd + Option + T` | Ejecutar la sección actual | Editor |
+| Media | `Ctrl + Shift + R` | `Cmd + Shift + R` | Insertar una sección | Editor |
+| Media | `Ctrl + Alt + I` | `Cmd + Option + I` | Insertar un chunk de código | Editor `.Rmd` |
+| Media | `Ctrl + Shift + K` | `Cmd + Shift + K` | Knit: generar el documento | Editor `.Rmd` |
+| Media | `Ctrl + Shift + A` | `Cmd + Shift + A` | Reformatear el código | Editor |
+| Media | `Ctrl + I` | `Cmd + I` | Reindentar líneas | Editor |
+| Media | `Ctrl + F` | `Cmd + F` | Buscar y reemplazar en el archivo | Editor |
+| Media | `Ctrl + Shift + F` | `Cmd + Shift + F` | Buscar en todos los archivos | General |
+| Media | `Ctrl + .` | `Ctrl + .` | Ir a un archivo o función | General |
+| Media | `F1` | `F1` | Ayuda de la función bajo el cursor | Editor |
+| Media | `F2` | `F2` | Ir a la definición de la función | Editor |
+| Media | `↑` / `Ctrl + ↑` | `↑` / `Cmd + ↑` | Comandos anteriores / historial filtrado | Consola |
+| Media | `Ctrl + 1` / `Ctrl + 2` | `Ctrl + 1` / `Ctrl + 2` | Mover el cursor al editor / a la consola | General |
+| Media | `Ctrl + Shift + F10` | `Cmd + Shift + 0` | Reiniciar la sesión de R | General |
+| Consulta | `Alt + Shift + K` | `Option + Shift + K` | Ver todos los atajos | General |
+
+Puedes cambiar cualquier atajo en *Tools → Modify Keyboard Shortcuts*. El manual completo de atajos está en `back/key-hot.md`.
+
+**Ejercicio:** escribe `total <- 250` usando `Alt + -` para la flecha, coméntala con `Ctrl + Shift + C` y descoméntala de nuevo.
+
+**Error común:** en algunos teclados en español, `Alt + -` no funciona porque otra aplicación usa esa combinación. Asigna otra en *Modify Keyboard Shortcuts*.
+
+## Autocompletado, búsqueda y navegación
+
+- Escribe las primeras letras de una función o variable y presiona `Tab`: RStudio sugiere opciones y muestra sus argumentos.
+- Dentro de los paréntesis de una función, `Tab` lista sus argumentos.
+- Dentro de comillas, `Tab` autocompleta **rutas de archivos**: escribe `"datos/` y presiona `Tab`.
+- `?mean` o `help(mean)` abren la ayuda; `??excel` busca en todos los paquetes instalados.
+
+```{r m3-ayuda, eval = FALSE}
+?read_excel           # ayuda de una función
+args(round)           # argumentos de una función
+example(mean)         # ejecutar los ejemplos de la ayuda
+apropos("mean")       # funciones cuyo nombre contiene "mean"
+```
+
+**Ejercicio:** usa la ayuda para averiguar qué hace el argumento `na.rm` de `sum()`.
+
+<details><summary>Ver solución</summary>
+
+`?sum` explica que `na.rm = TRUE` elimina los `NA` antes de sumar:
+
+```{r m3-sol-ayuda}
+sum(c(1, NA, 3), na.rm = TRUE)
+```
+
+</details>
+
+## Organización de proyectos y rutas relativas
+
+Un **proyecto de RStudio** (`.Rproj`) fija la carpeta de trabajo y guarda su configuración.
+
+```{r m3-rutas}
+getwd()                                  # carpeta de trabajo actual
+file.exists(file.path("datos", "datos.xlsx"))
+list.files("scripts")
+```
+
+| Ruta | Tipo | ¿Funciona en otra computadora? |
+|---|---|---|
+| `"C:/Users/ana/Documents/proyecto_r/datos/datos.xlsx"` | Absoluta | No |
+| `"datos/datos.xlsx"` | Relativa a la carpeta de trabajo | Sí |
+| `file.path("datos", "datos.xlsx")` | Relativa, construida con una función | Sí, y en cualquier sistema operativo |
+
+**Ejercicio:** construye la ruta a `salidas/validacion_datos.csv` con `file.path()` y comprueba si existe.
+
+<details><summary>Ver solución</summary>
+
+```{r m3-sol-rutas}
+ruta <- file.path("salidas", "validacion_datos.csv")
+file.exists(ruta)
+```
+
+Si devuelve `FALSE`, ejecuta antes `Rscript scripts/validar_datos.R`.
+
+</details>
+
+**Errores comunes:** usar `setwd("C:/...")` dentro de los scripts (fallará en otra computadora) y escribir rutas de Windows con una sola diagonal invertida: `"C:\datos"` produce un error. Usa `/` o `\\`.
+
+## Depuración básica y lectura de mensajes de error
+
+R tiene tres tipos de mensajes:
+
+| Tipo | Se ve como | ¿Detiene el código? |
+|---|---|---|
+| **Error** | `Error in ...` | Sí |
+| **Advertencia** | `Warning message: ...` | No, pero algo puede estar mal |
+| **Mensaje** | Texto informativo | No |
+
+Para leer un error: 1) identifica la **función** (`Error in mean(x)`), 2) lee la **causa** después de los dos puntos, 3) busca la línea del script que la produjo.
+
+```{r m3-errores, error = TRUE}
+log(-1)                  # advertencia: NaN
+as.numeric("abc")        # advertencia: NA por conversión
+sqrt("cuatro")           # error: argumento no numérico
+```
+
+Herramientas de depuración:
+
+```{r m3-depurar}
+dividir <- function(a, b) {
+  if (b == 0) stop("No se puede dividir entre cero.")
+  a / b
+}
+resultado <- tryCatch(
+  dividir(10, 0),
+  error = function(e) {
+    message("Ocurrió un error: ", conditionMessage(e))
+    NA
+  }
+)
+resultado
+```
+
+| Herramienta | Uso |
+|---|---|
+| `print()` / `str()` | Ver valores intermedios |
+| `traceback()` | Después de un error, ver qué funciones se llamaron |
+| `browser()` | Pausar dentro de una función para inspeccionarla |
+| Punto de interrupción | Clic a la izquierda del número de línea (el script debe ejecutarse con Source) |
+| `tryCatch()` | Controlar un error sin detener todo el programa |
+
+**Ejercicio:** escribe una función que use `stop()` si recibe un número negativo y pruébala con `tryCatch()`.
+
+<details><summary>Ver solución</summary>
+
+```{r m3-sol-depurar}
+raiz_segura <- function(x) {
+  if (x < 0) stop("El número no puede ser negativo.")
+  sqrt(x)
+}
+tryCatch(raiz_segura(-4), error = function(e) conditionMessage(e))
+```
+
+</details>
+
+## Instalación, carga y actualización de paquetes
+
+```{r m3-paquetes, eval = FALSE}
+install.packages("readxl")     # instalar (una sola vez; requiere Internet)
+library(readxl)                # cargar (en cada sesión)
+readxl::read_excel(...)        # usar una función sin cargar el paquete
+packageVersion("ggplot2")      # versión instalada
+update.packages(ask = FALSE)   # actualizar todos los paquetes
+remove.packages("readxl")      # desinstalar
+.libPaths()                    # carpetas donde se instalan los paquetes
+```
+
+```{r m3-paquetes-ok}
+requireNamespace("ggplot2", quietly = TRUE)   # TRUE si está instalado
+as.character(packageVersion("ggplot2"))
+```
+
+En este proyecto, los paquetes se instalan desde un único archivo: `requirements.R`.
+
+**Ejercicio:** escribe código que instale `readxl` solo si no está instalado.
+
+<details><summary>Ver solución</summary>
+
+```{r m3-sol-paquetes, eval = FALSE}
+if (!requireNamespace("readxl", quietly = TRUE)) install.packages("readxl")
+```
+
+</details>
+
+**Errores comunes**
+
+| Error | Causa | Solución |
+|---|---|---|
+| `there is no package called 'X'` | No está instalado | `install.packages("X")` |
+| `could not find function "read_excel"` | No se cargó el paquete | `library(readxl)` |
+| `package 'X' is not available for this version of R` | Nombre mal escrito o R muy antiguo | Revisa el nombre o actualiza R |
+| `cannot remove prior installation of package` | El paquete está en uso | Reinicia R (`Ctrl + Shift + F10`) y vuelve a instalar |

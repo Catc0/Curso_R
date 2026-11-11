@@ -1,0 +1,265 @@
+# Módulo 6. Análisis y visualización de datos {#modulo-6}
+
+**Objetivo:** explorar los datos del Excel, calcular estadísticas e indicadores, y elegir y construir la gráfica adecuada para cada pregunta.
+
+## Importación del Excel
+
+Usamos la función del proyecto, que ya limpia y valida los datos (módulo 2):
+
+```{r m6-importar}
+source(file.path("scripts", "validar_datos.R"), encoding = "UTF-8")
+programas <- cargar_datos(file.path("datos", "datos.xlsx"))
+dim(programas)
+```
+
+## Exploración y descripción de los datos
+
+```{r m6-explorar}
+str(programas[, c("TIPO", "ESTATUS", "ANIO", "AVANCE_PROGRAMA", "AVANCE_APOYOS",
+                  "TOTAL_APOYOS", "AVANCE_GLOBAL", "ULTIMA_MODIFICACION")])
+head(programas[, c("CLAVE", "DEPENDENCIA_CORTA", "ANIO", "AVANCE_GLOBAL")], 5)
+table(programas$TIPO)
+table(programas$ESTATUS_ETIQUETA, programas$ANIO)   # tabla cruzada
+length(unique(programas$DEPENDENCIA))
+```
+
+**Resultado:** hay programas de dos años y cuatro tipos. La tabla cruzada muestra cuántos hay de cada estatus en cada año.
+
+## Estadística descriptiva
+
+| Medida | Función | Qué indica |
+|---|---|---|
+| Media | `mean()` | Valor promedio (sensible a valores extremos) |
+| Mediana | `median()` | Valor central |
+| Mínimo, máximo | `min()`, `max()`, `range()` | Extremos |
+| Desviación estándar | `sd()` | Qué tan dispersos están los valores |
+| Cuartiles | `quantile()` | Valores que dividen los datos en cuatro partes |
+| Resumen | `summary()` | Todo lo anterior junto |
+
+```{r m6-descriptiva}
+summary(programas$TOTAL_APOYOS)
+sd(programas$TOTAL_APOYOS, na.rm = TRUE)
+quantile(programas$TOTAL_APOYOS, c(0.25, 0.5, 0.75, 0.9), na.rm = TRUE)
+```
+
+**Resultado:** la media del total de apoyos es mayor que la mediana porque unos pocos programas tienen muchos apoyos (el máximo es 25). Cuando hay valores extremos, la mediana describe mejor el caso típico.
+
+**Ejercicio:** calcula la media y la mediana de `AVANCE_GLOBAL`. ¿Cuál es mayor y por qué?
+
+<details><summary>Ver solución</summary>
+
+```{r m6-sol-descriptiva}
+mean(programas$AVANCE_GLOBAL, na.rm = TRUE)
+median(programas$AVANCE_GLOBAL, na.rm = TRUE)
+```
+
+La mediana es 1 porque más de la mitad de los programas están completos. La media es menor porque los programas con poco avance la bajan.
+
+</details>
+
+**Error común:** olvidar `na.rm = TRUE`: el resultado es `NA`.
+
+## Agrupaciones, resúmenes y filtros
+
+`aggregate()` calcula una estadística **por grupo**. La fórmula `variable ~ grupo` se lee como "variable según grupo".
+
+```{r m6-agrupar}
+# Avance global promedio por año
+aggregate(AVANCE_GLOBAL ~ ANIO, data = programas, FUN = mean)
+
+# Número de programas por dependencia, ordenado
+por_dep <- aggregate(CLAVE ~ DEPENDENCIA_CORTA, data = programas, FUN = length)
+names(por_dep)[2] <- "programas"
+head(por_dep[order(-por_dep$programas), ], 5)
+
+# Varias estadísticas a la vez
+aggregate(TOTAL_APOYOS ~ TIPO, data = programas,
+          FUN = function(x) c(total = sum(x), promedio = round(mean(x), 2)))
+
+# Filtrar y resumir: programas de 2025 sin titular RP, por dependencia
+sin_rp <- programas[programas$ANIO == 2025 & is.na(programas$TITULAR_RP), ]
+sort(table(sin_rp$DEPENDENCIA_CORTA), decreasing = TRUE)[1:5]
+```
+
+**Ejercicio:** calcula el total de apoyos por año.
+
+<details><summary>Ver solución</summary>
+
+```{r m6-sol-agrupar}
+aggregate(TOTAL_APOYOS ~ ANIO, data = programas, FUN = sum)
+```
+
+</details>
+
+**Error común:** con fórmula, `aggregate()` **elimina las filas con `NA`** en las variables usadas. Es lo que queremos para promediar, pero al contar filas puede dar un número menor del esperado.
+
+## Indicadores estadísticos
+
+Los indicadores (KPI) resumen la situación en un número. Estos son los del dashboard, con su definición:
+
+```{r m6-kpis}
+source(file.path("dashboard", "graficas.R"), encoding = "UTF-8")
+kpis <- calcular_kpis(programas)
+data.frame(
+  indicador = c("Total programas", "Programas completos", "Programas con avance",
+                "Total apoyos", "Avance programa", "Avance apoyos", "Avance global"),
+  definicion = c("Número de filas", "Avance global = 100 %", "Avance global entre 0 % y 100 %",
+                 "Suma de TOTAL_APOYOS", "Promedio de AVANCE_PROGRAMA",
+                 "Promedio de AVANCE_APOYOS", "Promedio de AVANCE_GLOBAL"),
+  valor = c(kpis$total_programas, kpis$completos, kpis$con_avance, kpis$total_apoyos,
+            formato_pct(kpis$avance_programa), formato_pct(kpis$avance_apoyos),
+            formato_pct(kpis$avance_global))
+)
+```
+
+**Detalle importante:** el avance global promedio es **mayor** que los otros dos promedios. La razón: los 19 programas sin avance de apoyos no tienen avance global, así que quedan fuera de ese promedio, y varios de ellos tienen avance de programa bajo.
+
+```{r m6-kpi-detalle}
+sin_global <- programas[is.na(programas$AVANCE_GLOBAL), ]
+nrow(sin_global)
+mean(sin_global$AVANCE_PROGRAMA)
+```
+
+Siempre documenta **cómo** se calcula cada indicador y **qué datos excluye**.
+
+## Selección apropiada de gráficas
+
+| Pregunta | Tipo de gráfica | Por qué |
+|---|---|---|
+| ¿Cómo se compara una cantidad entre categorías? | Barras (horizontales si los nombres son largos) | Comparar longitudes es fácil y preciso |
+| ¿Qué proporción representa cada parte del total? | Dona o pastel (pocas categorías) | Muestra la relación parte–todo |
+| ¿Cómo cambia algo en el tiempo? | Líneas | Muestra la tendencia |
+| ¿Cómo se distribuye una variable? | Histograma o diagrama de caja | Muestra la forma, el centro y los extremos |
+| ¿Se relacionan dos variables numéricas? | Dispersión | Cada punto es una observación |
+
+## Gráficas con ggplot2
+
+`ggplot2` construye gráficas por **capas**: datos + estética (`aes`: qué variable va en cada eje o color) + geometría (`geom_*`) + ajustes.
+
+```r
+ggplot(datos, aes(x = variable_x, y = variable_y)) +
+  geom_col() +                 # tipo de gráfica
+  labs(title = "...", x = "...", y = "...") +
+  theme_minimal()
+```
+
+```{r m6-ggplot-barras, fig.height = 4.5}
+library(ggplot2)
+
+# Pregunta: ¿qué dependencias tienen más programas?
+por_dep$DEPENDENCIA_CORTA <- reorder(por_dep$DEPENDENCIA_CORTA, por_dep$programas)
+ggplot(por_dep, aes(x = programas, y = DEPENDENCIA_CORTA)) +
+  geom_col(fill = "#1a9ba1") +
+  geom_text(aes(label = programas), hjust = -0.2, size = 3.2) +
+  labs(title = "Programas por dependencia", x = "Programas", y = NULL) +
+  theme_minimal()
+```
+
+**Lectura:** la Secretaría de Educación Pública concentra la mayor cantidad de programas, muy por encima de las demás.
+
+```{r m6-ggplot-hist, fig.height = 3.5}
+# Pregunta: ¿cómo se distribuye el número de apoyos por programa?
+ggplot(programas[!is.na(programas$TOTAL_APOYOS), ], aes(x = TOTAL_APOYOS)) +
+  geom_histogram(binwidth = 1, fill = "#1a9ba1", color = "white") +
+  labs(title = "Distribución del total de apoyos", x = "Apoyos por programa", y = "Programas") +
+  theme_minimal()
+```
+
+**Lectura:** la mayoría de los programas tiene entre 1 y 4 apoyos; unos pocos tienen muchos más.
+
+```{r m6-ggplot-caja, fig.height = 3.5}
+# Pregunta: ¿el avance del programa es distinto según el tipo?
+ggplot(programas, aes(x = TIPO, y = AVANCE_PROGRAMA, fill = TIPO)) +
+  geom_boxplot(show.legend = FALSE) +
+  scale_y_continuous(labels = function(x) paste0(x * 100, "%")) +
+  labs(title = "Avance del programa por tipo", x = "Tipo", y = "Avance") +
+  theme_minimal()
+```
+
+```{r m6-ggplot-lineas, fig.height = 3.5}
+# Pregunta: ¿cuántos programas se modificaron cada día?
+por_dia <- aggregate(CLAVE ~ ULTIMA_MODIFICACION, data = programas, FUN = length)
+ggplot(por_dia, aes(x = ULTIMA_MODIFICACION, y = CLAVE)) +
+  geom_line(color = "#0e6e73") +
+  geom_point(color = "#0e6e73") +
+  labs(title = "Programas modificados por día", x = "Fecha", y = "Programas") +
+  theme_minimal()
+```
+
+```{r m6-ggplot-dispersion, fig.height = 3.5}
+# Pregunta: ¿los programas con más apoyos tienen menos avance de apoyos?
+ggplot(programas, aes(x = TOTAL_APOYOS, y = AVANCE_APOYOS)) +
+  geom_jitter(width = 0.2, height = 0.01, alpha = 0.6, color = "#1a9ba1", na.rm = TRUE) +
+  labs(title = "Total de apoyos frente a avance de apoyos", x = "Total de apoyos",
+       y = "Avance de apoyos") +
+  theme_minimal()
+```
+
+Guardar una gráfica en un archivo:
+
+```{r m6-guardar, eval = FALSE}
+ggsave(file.path("salidas", "programas_por_dependencia.png"), width = 8, height = 5, dpi = 150)
+```
+
+**Ejercicio:** haz una gráfica de barras agrupadas con el número de programas por tipo y año (`fill = factor(ANIO)`, `position = "dodge"`).
+
+<details><summary>Ver solución</summary>
+
+```{r m6-sol-ggplot, fig.height = 3.5}
+ggplot(programas, aes(x = TIPO, fill = factor(ANIO))) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("#7fd1d4", "#0e6e73"), name = "Año") +
+  labs(x = "Tipo", y = "Programas") +
+  theme_minimal()
+```
+
+</details>
+
+**Errores comunes**
+
+| Error | Causa |
+|---|---|
+| `could not find function "ggplot"` | Falta `library(ggplot2)` |
+| `object 'X' not found` dentro de `aes()` | La columna no existe en el data frame |
+| Un `+` al inicio de la línea siguiente | El `+` debe ir **al final** de la línea anterior |
+| `geom_bar()` con una columna `y` | Usa `geom_col()` cuando ya tienes los valores; `geom_bar()` cuenta filas |
+| Las barras salen en orden alfabético | Usa `reorder()` para ordenarlas por valor |
+
+## Tablas de resultados
+
+```{r m6-tabla}
+tabla <- aggregate(cbind(AVANCE_PROGRAMA, AVANCE_APOYOS, AVANCE_GLOBAL) ~ TIPO_ETIQUETA,
+                   data = programas, FUN = mean)
+tabla[, -1] <- lapply(tabla[, -1], function(x) paste0(round(x * 100, 1), "%"))
+knitr::kable(tabla, col.names = c("Tipo", "Avance programa", "Avance apoyos", "Avance global"),
+             align = "lrrr", caption = "Avance promedio por tipo de programa")
+```
+
+`cbind()` dentro de la fórmula resume varias columnas a la vez. Esta forma solo usa las filas que tienen **los tres** avances.
+
+## Validación de resultados y consistencia de los datos
+
+Antes de publicar un número, compruébalo por otro camino:
+
+```{r m6-validar}
+# 1. La suma por grupos debe ser igual al total
+sum(table(programas$TIPO)) == nrow(programas)
+
+# 2. Completos + con avance + sin avance + sin dato = total
+sin_avance <- sum(!is.na(programas$AVANCE_GLOBAL) & programas$AVANCE_GLOBAL == 0)
+sin_dato <- sum(is.na(programas$AVANCE_GLOBAL))
+sum(programas$COMPLETO) + sum(programas$CON_AVANCE) + sin_avance + sin_dato == nrow(programas)
+
+# 3. La regla de la hoja SQL se cumple
+knitr::kable(validar_datos(programas))
+```
+
+**Ejercicio:** verifica que la suma de los programas por año sea igual al total de filas.
+
+<details><summary>Ver solución</summary>
+
+```{r m6-sol-validar}
+sum(table(programas$ANIO)) == nrow(programas)
+```
+
+</details>

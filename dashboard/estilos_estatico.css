@@ -1,0 +1,64 @@
+/* ============================================================
+   dashboard/estilos_estatico.css
+   Ajustes solo para la versión HTML (dashboard_estatico.Rmd).
+   Los estilos comunes están en estilos.css.
+   ============================================================ */
+
+/* R Markdown limita el ancho a 940 px; el dashboard usa toda la pantalla. */
+.main-container {
+  max-width: none !important;  /* R Markdown inserta su regla después de este CSS */
+  margin: 0 !important;
+  padding: 0 8px;
+}
+
+/* El título del documento lo reemplaza el encabezado propio. */
+#header,
+#vista > h2 {
+  display: none;
+}
+
+.aviso-estatico {
+  background: #fff;
+  border-left: 4px solid var(--principal);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+}
+
+/* Pestañas (una por año) con los colores del dashboard */
+.nav-pills > li > a {
+  color: var(--oscuro);
+  font-weight: 600;
+}
+.nav-pills > li.active > a,
+.nav-pills > li.active > a:hover,
+.nav-pills > li.active > a:focus {
+  background: var(--principal);
+}
+.tab-content {
+  margin-top: 14px;
+}
+
+.tarjeta .card-header {
+  padding: 10px 14px;
+}
+.tarjeta .card-body {
+  padding: 10px;
+}
+img.grafica {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.kpi-icono svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+.estado-vacio {
+  color: #6c7a86;
+  font-style: italic;
+  text-align: center;
+  padding: 40px 0;
+}

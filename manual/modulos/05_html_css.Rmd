@@ -1,0 +1,249 @@
+# Módulo 5. HTML, CSS y contenido dinámico {#modulo-5}
+
+**Objetivo:** entender cómo se construye una página web, darle estilo con CSS y generar contenido HTML con R. Esto prepara el terreno para el dashboard.
+
+## ¿Qué se ejecuta dónde?
+
+| Pieza | ¿Quién la procesa? | ¿Cuándo? |
+|---|---|---|
+| Código R en un `.Rmd` | **R**, en tu computadora | Al generar el documento (Knit) |
+| HTML | **El navegador** | Al abrir el archivo |
+| CSS | **El navegador** | Al abrir el archivo |
+| JavaScript | **El navegador** | Al abrir y mientras usas la página |
+| Código R en Shiny | **R** (servidor), de forma continua | Cada vez que cambias un control |
+
+Un informe HTML de R Markdown es **estático**: R ya terminó de calcular y el navegador solo muestra el resultado. Un dashboard Shiny es **interactivo**: el navegador le pide a R que vuelva a calcular cada vez que cambias un filtro.
+
+## Estructura básica de HTML
+
+HTML describe el **contenido** de una página mediante **etiquetas** (`<etiqueta>contenido</etiqueta>`).
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi página</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <h1>Avance de programas</h1>
+  <p>Hay <strong>250</strong> programas registrados.</p>
+  <div class="kpi" id="kpi-total">
+    <span class="kpi-titulo">Total programas</span>
+    <span class="kpi-valor">250</span>
+  </div>
+  <img src="recursos/dashboard.png" alt="Dashboard de referencia">
+  <a href="https://cran.r-project.org">CRAN</a>
+</body>
+</html>
+```
+
+| Etiqueta | Uso |
+|---|---|
+| `<h1>`...`<h6>` | Títulos |
+| `<p>` | Párrafo |
+| `<div>` / `<span>` | Contenedor de bloque / en línea (sirven para aplicar estilos) |
+| `<table>`, `<tr>`, `<td>` | Tablas |
+| `<img>`, `<a>` | Imagen y enlace |
+| `class="..."`, `id="..."` | Atributos para identificar elementos desde CSS o JavaScript |
+
+**Ejercicio:** escribe el HTML de una tarjeta con el título "Avance global" y el valor "97.2%".
+
+<details><summary>Ver solución</summary>
+
+```html
+<div class="kpi">
+  <span class="kpi-titulo">Avance global</span>
+  <span class="kpi-valor">97.2%</span>
+</div>
+```
+
+</details>
+
+**Errores comunes:** no cerrar etiquetas (`<div>` sin `</div>`), lo que desacomoda toda la página, y olvidar `<meta charset="utf-8">`, lo que hace que los acentos se vean mal.
+
+## Selectores, propiedades y reglas CSS
+
+CSS define la **apariencia**. Una regla tiene un **selector** (a qué elementos se aplica) y **propiedades** (qué cambia).
+
+```css
+/* selector { propiedad: valor; } */
+h1 { color: #0e6e73; }          /* etiqueta */
+.kpi {                            /* clase: empieza con punto */
+  background: white;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+#kpi-total { border-top: 4px solid #1a9ba1; }  /* id: empieza con # */
+.kpi .kpi-valor { font-size: 1.4rem; font-weight: bold; }  /* descendiente */
+```
+
+| Propiedad | Ejemplo | Efecto |
+|---|---|---|
+| `color`, `background` | `color: #2c3e50;` | Color del texto y del fondo |
+| `font-size`, `font-weight` | `font-size: 1.2rem;` | Tamaño y grosor de la letra |
+| `margin`, `padding` | `padding: 12px;` | Espacio exterior e interior |
+| `border`, `border-radius` | `border-radius: 10px;` | Borde y esquinas redondeadas |
+| `display: grid` / `flex` | `display: grid;` | Acomodar elementos en filas y columnas |
+
+**Ejercicio:** escribe una regla para que todos los elementos con clase `alerta` tengan el texto rojo y la letra en negrita.
+
+<details><summary>Ver solución</summary>
+
+```css
+.alerta { color: #c0392b; font-weight: bold; }
+```
+
+</details>
+
+**Errores comunes:** olvidar el `;` al final de cada propiedad (la regla se ignora a partir de ese punto) y escribir `kpi` en lugar de `.kpi` para seleccionar una clase.
+
+## Diseño adaptable a distintos tamaños de pantalla
+
+Con **CSS Grid** y **media queries**, la misma página se reacomoda según el ancho de la pantalla:
+
+```css
+.fila-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);   /* 4 columnas iguales */
+  gap: 12px;
+}
+@media (max-width: 992px) {                /* tabletas */
+  .fila-kpi { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {                /* teléfonos */
+  .fila-kpi { grid-template-columns: 1fr; }
+}
+```
+
+Para que funcione en teléfonos, el HTML necesita `<meta name="viewport" content="width=device-width, initial-scale=1">`. R Markdown y Shiny ya la incluyen.
+
+El archivo `dashboard/estilos.css` usa exactamente esta técnica. Para probarla, abre el dashboard y reduce el ancho de la ventana, o presiona `F12` en el navegador y activa el modo de dispositivo.
+
+## Integración de HTML y CSS en R Markdown
+
+Tres formas de agregar estilos a un `.Rmd`:
+
+1. Un archivo externo en el YAML: `output: html_document: css: estilos.css` (es lo que usa este manual).
+2. Un chunk de tipo `css`:
+
+```{css m5-css-chunk, echo = TRUE}
+.tarjeta-demo {
+  display: inline-block;
+  background: #fff;
+  border-top: 4px solid #1a9ba1;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 10px 18px;
+  margin: 6px 10px 6px 0;
+  min-width: 150px;
+}
+.tarjeta-demo .titulo { font-size: 0.8rem; color: #6c7a86; }
+.tarjeta-demo .valor { font-size: 1.5rem; font-weight: 700; color: #2c3e50; }
+```
+
+3. HTML escrito directamente en el texto de Markdown: <span style="color: #1a9ba1; font-weight: bold;">este texto usa estilo en línea</span>.
+
+## Contenido dinámico generado con R
+
+R puede **escribir HTML**. Con `results = "asis"`, el texto que imprime el chunk se inserta tal cual en la página.
+
+```{r m5-kpi-html, results = "asis"}
+if (!exists("programas")) {
+  source(file.path("scripts", "validar_datos.R"), encoding = "UTF-8")
+  programas <- cargar_datos()
+}
+
+tarjeta <- function(titulo, valor) {
+  sprintf('<div class="tarjeta-demo"><div class="titulo">%s</div><div class="valor">%s</div></div>',
+          titulo, valor)
+}
+
+cat(
+  tarjeta("Total programas", nrow(programas)),
+  tarjeta("Completos", sum(programas$COMPLETO)),
+  tarjeta("Avance global", paste0(round(mean(programas$AVANCE_GLOBAL, na.rm = TRUE) * 100, 1), "%")),
+  sep = "\n"
+)
+```
+
+**Resultado:** las tres tarjetas se calculan con los datos del Excel. Si los datos cambian, basta con volver a generar el documento.
+
+El paquete `htmltools` (se instala junto con `shiny` y `rmarkdown`) construye HTML con funciones en lugar de texto. Es la forma que usa Shiny:
+
+```{r m5-htmltools}
+library(htmltools)
+tags$div(
+  class = "tarjeta-demo",
+  tags$div(class = "titulo", "Dependencias"),
+  tags$div(class = "valor", length(unique(programas$DEPENDENCIA)))
+)
+```
+
+## Parámetros, tablas filtradas, indicadores y visualizaciones
+
+Combinando parámetros (módulo 4) con HTML generado por R obtienes informes que cambian según un valor. Aquí, un año fijado en una variable:
+
+```{r m5-tabla-filtrada, results = "asis"}
+anio_elegido <- 2025
+d <- programas[programas$ANIO == anio_elegido, ]
+
+cat(tarjeta(paste("Programas", anio_elegido), nrow(d)),
+    tarjeta("Sin titular RP", sum(is.na(d$TITULAR_RP))), sep = "\n")
+
+top <- sort(table(d$DEPENDENCIA_CORTA), decreasing = TRUE)[1:5]
+print(knitr::kable(data.frame(Dependencia = names(top), Programas = as.integer(top)),
+                   format = "html", table.attr = 'class="table table-striped"'))
+```
+
+**Ejercicio:** cambia `anio_elegido` a 2024 y genera de nuevo el documento. ¿Qué tarjetas cambian?
+
+<details><summary>Ver solución</summary>
+
+Cambian todas, porque se calculan con `d`, que depende de `anio_elegido`. Así se ve con 2024:
+
+```{r m5-sol-filtrada}
+d <- programas[programas$ANIO == 2024, ]
+c(programas = nrow(d), sin_titular = sum(is.na(d$TITULAR_RP)))
+```
+
+</details>
+
+## Introducción a JavaScript (solo cuando es necesario)
+
+JavaScript se ejecuta **en el navegador** y permite reaccionar a clics y escritura **sin volver a R**. Este manual lo usa para el buscador del menú lateral. Ejemplo mínimo:
+
+```{=html}
+<div style="margin: 10px 0;">
+  <button class="btn btn-default" onclick="
+    var p = document.getElementById('m5-mensaje');
+    p.textContent = 'Clic recibido a las ' + new Date().toLocaleTimeString();
+  ">Presióname</button>
+  <span id="m5-mensaje" style="margin-left: 10px;"></span>
+</div>
+```
+
+```html
+<button onclick="
+  var p = document.getElementById('m5-mensaje');
+  p.textContent = 'Clic recibido a las ' + new Date().toLocaleTimeString();
+">Presióname</button>
+<span id="m5-mensaje"></span>
+```
+
+JavaScript **no puede** volver a ejecutar R. Por eso no basta para recalcular promedios con datos filtrados de forma general; para eso se usa Shiny (módulo 7).
+
+## Informe HTML estático frente a dashboard interactivo
+
+| | Informe R Markdown (HTML) | Dashboard Shiny |
+|---|---|---|
+| ¿Necesita R abierto? | No: es un archivo | Sí: R funciona como servidor |
+| ¿Se puede enviar por correo? | Sí | No (se comparte la carpeta o se publica en un servidor) |
+| Filtros que recalculan | No (salvo JavaScript limitado) | Sí, todos |
+| Cuándo usarlo | Reportes periódicos, documentación | Exploración de datos, monitoreo |
+| En este proyecto | `manual/index.html`, `salidas/*.html` | `dashboard/app.R` |
+
+**Error común:** llamar "dashboard interactivo" a un HTML que solo tiene gráficas fijas. Si los filtros no cambian los números, no es interactivo.

@@ -1,0 +1,251 @@
+# Módulo 4. Markdown y R Markdown {#modulo-4}
+
+**Objetivo:** escribir documentos que mezclan texto, código R y resultados, y convertirlos en informes HTML. Este mismo manual está hecho con R Markdown.
+
+## Sintaxis Markdown
+
+Markdown es una forma de dar formato a un texto con símbolos sencillos.
+
+| Escribes | Obtienes |
+|---|---|
+| `# Título`, `## Subtítulo`, `### Nivel 3` | Títulos de distintos niveles |
+| `**negrita**`, `*cursiva*` | **negrita**, *cursiva* |
+| `` `codigo` `` | `codigo` |
+| `- elemento` o `1. elemento` | Listas con viñetas o numeradas |
+| `[texto](https://cran.r-project.org)` | [texto](https://cran.r-project.org) |
+| `![descripción](ruta/imagen.png)` | Una imagen |
+| `> cita` | Un bloque de cita |
+| `---` | Una línea horizontal |
+
+Ejemplo de tabla y bloque de código:
+
+````markdown
+| Año  | Programas |
+|------|-----------|
+| 2024 | 124       |
+| 2025 | 126       |
+
+```r
+total <- 124 + 126
+```
+````
+
+**Ejercicio:** escribe en Markdown un título, una lista con tres paquetes del curso y un enlace a CRAN.
+
+<details><summary>Ver solución</summary>
+
+```markdown
+## Paquetes del curso
+
+- readxl
+- ggplot2
+- shiny
+
+Más información en [CRAN](https://cran.r-project.org).
+```
+
+</details>
+
+**Errores comunes:** olvidar la línea en blanco antes de una lista o una tabla (no se reconoce) y no dejar un espacio después de `#` (`#Título` no es un título).
+
+## Estructura de un documento .Rmd
+
+Un archivo `.Rmd` tiene tres partes:
+
+1. **Encabezado YAML** entre dos líneas `---`: título, autor y formato de salida.
+2. **Texto** en Markdown.
+3. **Chunks**: bloques de código R que se ejecutan al generar el documento.
+
+Al presionar **Knit**, el paquete `knitr` ejecuta los chunks y escribe un `.md` con los resultados; después **Pandoc** convierte ese `.md` en HTML.
+
+```
+archivo.Rmd  --knitr-->  archivo.md  --Pandoc-->  archivo.html
+```
+
+Un documento mínimo completo:
+
+````markdown
+---
+title: "Mi primer informe"
+output: html_document
+---
+
+## Resumen
+
+`r ''````{r}
+total <- 250
+total * 2
+```
+
+El total es `r "\x60r total\x60"`.
+````
+
+En RStudio crea uno con *File → New File → R Markdown*.
+
+## Encabezado YAML
+
+```yaml
+---
+title: "Informe de avance"
+author: "Tu nombre"
+date: "`r "\x60r format(Sys.Date(), '%d/%m/%Y')\x60"`"
+output:
+  html_document:
+    toc: true            # tabla de contenidos
+    toc_float: true      # la tabla flota a la izquierda
+    number_sections: true
+    theme: flatly        # tema visual de Bootstrap
+    css: estilos.css     # estilos propios
+    code_folding: show   # botón para ocultar el código
+params:
+  anio: 2025
+---
+```
+
+**Error común:** YAML depende de la **sangría**. Usa espacios (nunca tabulaciones) y respeta los dos puntos y los niveles. Si la sangría está mal, aparece `Error in yaml::yaml.load`.
+
+## Bloques de código R (chunks)
+
+Un chunk empieza con tres comillas invertidas y `{r}`, y termina con tres comillas. En RStudio se inserta con `Ctrl + Alt + I`. Puedes darle un nombre (sin repetirlo en el documento):
+
+````markdown
+`r ''````{r promedio-avance}
+mean(programas$AVANCE_GLOBAL, na.rm = TRUE)
+```
+````
+
+También puedes escribir **código en línea**: `` `r '\x60r round(mean(c(1, 0.5)), 2)\x60'` `` dentro de un párrafo se reemplaza por su resultado, `r round(mean(c(1, 0.5)), 2)`.
+
+## Opciones de ejecución de chunks
+
+| Opción | Valor por defecto | Efecto |
+|---|---|---|
+| `echo` | `TRUE` | Mostrar el código |
+| `eval` | `TRUE` | Ejecutar el código |
+| `include` | `TRUE` | Incluir código y resultados (con `FALSE` se ejecuta, pero no se muestra nada) |
+| `message`, `warning` | `TRUE` | Mostrar mensajes y advertencias |
+| `error` | `FALSE` | Con `TRUE`, el documento sigue aunque haya un error |
+| `results` | `"markup"` | `"asis"` inserta el resultado como Markdown o HTML; `"hide"` lo oculta |
+| `fig.width`, `fig.height` | 7, 5 | Tamaño de las gráficas (pulgadas) |
+| `fig.cap` | `NULL` | Pie de figura |
+| `cache` | `FALSE` | Guardar resultados para no recalcular |
+
+Se escriben en la cabecera del chunk: `{r grafica, echo = FALSE, fig.height = 4}`. Para todo el documento: `knitr::opts_chunk$set(echo = TRUE, message = FALSE)` en el primer chunk.
+
+**Ejercicio:** ¿qué opción usarías para cargar paquetes sin que aparezca nada en el informe?
+
+<details><summary>Ver solución</summary>
+
+`include = FALSE`: el chunk se ejecuta, pero no se muestran ni el código ni los resultados.
+
+</details>
+
+## Inclusión de resultados, tablas y gráficas
+
+```{r m4-resultados, fig.height = 3.5, fig.cap = "Programas por año."}
+if (!exists("programas")) {
+  source(file.path("scripts", "validar_datos.R"), encoding = "UTF-8")
+  programas <- cargar_datos()
+}
+
+# Tabla con formato
+resumen_anio <- aggregate(CLAVE ~ ANIO, data = programas, FUN = length)
+names(resumen_anio) <- c("Año", "Programas")
+knitr::kable(resumen_anio, caption = "Programas por año")
+
+# Gráfica
+barplot(resumen_anio$Programas, names.arg = resumen_anio$Año,
+        col = "#1a9ba1", border = NA, ylab = "Programas")
+```
+
+Texto con valores calculados: el Excel tiene **`r nrow(programas)`** programas de **`r length(unique(programas$DEPENDENCIA))`** dependencias.
+
+## Parámetros y reutilización de documentos
+
+Con `params` en el YAML, un mismo `.Rmd` genera varios informes. El proyecto incluye `demos/informe_parametrizado.Rmd` como **ejemplo completo**:
+
+```{r m4-mostrar-informe, echo = FALSE, comment = ""}
+cat(readLines(file.path("demos", "informe_parametrizado.Rmd"), encoding = "UTF-8"), sep = "\n")
+```
+
+Para generar un informe por año:
+
+```{r m4-render-params, eval = FALSE}
+for (anio in c(2024, 2025)) {
+  rmarkdown::render(
+    "demos/informe_parametrizado.Rmd",
+    params = list(anio = anio),
+    output_file = paste0("informe_", anio, ".html"),
+    output_dir = "salidas"
+  )
+}
+```
+
+En RStudio también puedes usar *Knit → Knit with Parameters...*.
+
+## Generación de informes HTML
+
+| Forma | Comando |
+|---|---|
+| Botón **Knit** | `Ctrl + Shift + K` |
+| Consola de R | `rmarkdown::render("demos/01_fundamentos.Rmd")` |
+| PowerShell | `Rscript -e "rmarkdown::render('demos/01_fundamentos.Rmd')"` |
+| Todo el proyecto | `Rscript scripts/generar_documentacion.R` |
+
+El HTML resultante es **autónomo**: incluye imágenes y estilos, así que puedes enviarlo por correo o abrirlo sin R.
+
+## Organización de documentos y recursos externos
+
+- Guarda las imágenes en una carpeta `recursos/` junto al `.Rmd` y enlázalas con rutas relativas: `![Logo](recursos/logo.png)`.
+- Usa `knitr::include_graphics("recursos/imagen.png")` para insertar imágenes desde un chunk.
+- Divide documentos largos con **documentos hijo** (*child*). Este manual se construye así: `manual/index.Rmd` incluye cada archivo de `manual/modulos/`:
+
+````markdown
+`r ''````{r, child = "modulos/01_fundamentos.Rmd"}
+```
+````
+
+- Los chunks se ejecutan en la carpeta del `.Rmd`. Este proyecto usa `knitr::opts_knit$set(root.dir = ...)` para que todos usen la carpeta raíz del proyecto.
+
+```{r m4-imagen, out.width = "70%", fig.cap = "Imagen de referencia del dashboard."}
+knitr::include_graphics(normalizePath(file.path("manual", "recursos", "dashboard.png")), rel_path = FALSE)
+```
+
+## Errores de renderizado y solución de problemas
+
+| Error | Causa | Solución |
+|---|---|---|
+| `object 'x' not found` al hacer Knit, aunque en la consola funciona | Knit usa una sesión **nueva**: no ve tu Environment | Crea o carga todo dentro del documento |
+| `Duplicate chunk label 'x'` | Dos chunks con el mismo nombre | Cambia uno de los nombres |
+| `pandoc version 1.12.3 or higher is required` | No se encuentra Pandoc | Usa Knit en RStudio o instala Pandoc |
+| `Error in yaml::yaml.load` / `Scanner error` | Sangría o comillas incorrectas en el YAML | Revisa los espacios y los dos puntos |
+| `cannot open file 'datos/...'` | Carpeta de trabajo distinta | Define `root.dir` o usa rutas desde la carpeta del `.Rmd` |
+| `there is no package called 'X'` | Falta el paquete | `source("requirements.R")` |
+| Los acentos se ven mal | El archivo no está en UTF-8 | *File → Save with Encoding → UTF-8* |
+
+**Ejercicio:** crea un archivo `.Rmd` con un título, un chunk que calcule el promedio de `AVANCE_GLOBAL` y una frase con ese valor en línea. Genera el HTML con Knit.
+
+<details><summary>Ver solución</summary>
+
+````markdown
+---
+title: "Avance promedio"
+output: html_document
+---
+
+`r ''````{r setup, include = FALSE}
+knitr::opts_knit$set(root.dir = normalizePath(".."))
+```
+
+`r ''````{r}
+source("scripts/validar_datos.R", encoding = "UTF-8")
+programas <- cargar_datos()
+promedio <- mean(programas$AVANCE_GLOBAL, na.rm = TRUE)
+```
+
+El avance global promedio es `r "\x60r round(promedio * 100, 1)\x60"`%.
+````
+
+Guarda el archivo dentro de `demos/` para que `normalizePath("..")` apunte a la raíz del proyecto.
+
+</details>

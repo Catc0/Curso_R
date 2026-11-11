@@ -1,0 +1,80 @@
+---
+title: "Informe de avance de programas `r params$anio`"
+lang: es
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    css: ../manual/estilos.css
+params:
+  anio: 2025
+---
+
+```{r setup, include = FALSE}
+# El informe está en demos/; la raíz del proyecto está un nivel arriba.
+knitr::opts_knit$set(root.dir = normalizePath(".."))
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.align = "center", fig.width = 7, fig.height = 4)
+```
+
+```{r datos}
+source(file.path("scripts", "validar_datos.R"), encoding = "UTF-8")
+source(file.path("dashboard", "graficas.R"), encoding = "UTF-8")
+
+programas <- cargar_datos(file.path("datos", "datos.xlsx"))
+if (!params$anio %in% programas$ANIO) {
+  stop("El año ", params$anio, " no existe en los datos. Años disponibles: ",
+       paste(sort(unique(programas$ANIO)), collapse = ", "))
+}
+d <- programas[programas$ANIO == params$anio, ]
+k <- calcular_kpis(d)
+```
+
+## Resumen
+
+En `r params$anio` se registraron **`r k$total_programas` programas** de
+**`r length(unique(d$DEPENDENCIA))` dependencias**. De ellos, `r k$completos` tienen
+avance global completo y `r k$con_avance` tienen avance parcial. El avance global
+promedio es de **`r formato_pct(k$avance_global)`**.
+
+```{r kpis}
+knitr::kable(
+  data.frame(
+    Indicador = c("Total programas", "Programas completos", "Programas con avance",
+                  "Total apoyos", "Avance programa", "Avance apoyos", "Avance global"),
+    Valor = c(formato_entero(k$total_programas), formato_entero(k$completos),
+              formato_entero(k$con_avance), formato_entero(k$total_apoyos),
+              formato_pct(k$avance_programa), formato_pct(k$avance_apoyos),
+              formato_pct(k$avance_global))
+  ),
+  align = "lr"
+)
+```
+
+## Avance global por dependencia
+
+```{r avance, fig.height = 5}
+grafica_avance_dependencia(d)
+```
+
+## Responsables sin asignar
+
+```{r responsables, fig.height = 3}
+grafica_responsables(d)
+```
+
+## Programas sin titular RP
+
+```{r tabla, results = "asis"}
+sin_rp <- d[is.na(d$TITULAR_RP), c("CLAVE", "PROGRAMA", "DEPENDENCIA_CORTA")]
+if (nrow(sin_rp) == 0) {
+  cat("Todos los programas tienen titular RP asignado.")
+} else {
+  knitr::kable(sin_rp[order(sin_rp$DEPENDENCIA_CORTA), ],
+               col.names = c("Clave", "Programa", "Dependencia"), row.names = FALSE)
+}
+```
+
+---
+
+*Fuente: datos/datos.xlsx. Informe generado el `r format(Sys.Date(), "%d/%m/%Y")` con el parámetro anio = `r params$anio`.*
